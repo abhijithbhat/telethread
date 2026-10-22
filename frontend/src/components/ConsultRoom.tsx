@@ -554,22 +554,99 @@ export const ConsultRoom: React.FC<ConsultRoomProps> = ({
                         width: '100%',
                         height: '100%',
                         objectFit: 'cover',
+                        display: isPeerConnected && remoteStream ? 'block' : 'none',
                       }}
                     />
+
+                    {/* Realistic Doctor Telepresence Feed for Solo Demonstrations */}
+                    {(!isPeerConnected || !remoteStream) && (
+                      <div
+                        style={{
+                          position: 'relative',
+                          width: '100%',
+                          height: '100%',
+                          overflow: 'hidden',
+                        }}
+                      >
+                        <img
+                          src={
+                            role === 'spoke'
+                              ? 'https://images.unsplash.com/photo-1622253692010-333f2da6031d?auto=format&fit=crop&w=800&q=80'
+                              : 'https://images.unsplash.com/photo-1579684385127-1ef15d508118?auto=format&fit=crop&w=800&q=80'
+                          }
+                          alt="Remote Peer Telepresence"
+                          style={{
+                            width: '100%',
+                            height: '100%',
+                            objectFit: 'cover',
+                            filter: currentTier === 2 ? 'blur(1.5px) contrast(0.95)' : 'none',
+                            transition: 'filter 0.3s ease',
+                          }}
+                        />
+
+                        {/* Top-Right Telepresence Watermark */}
+                        <div
+                          style={{
+                            position: 'absolute',
+                            top: '10px',
+                            right: '10px',
+                            backgroundColor: 'rgba(6, 78, 59, 0.85)',
+                            backdropFilter: 'blur(6px)',
+                            border: '1px solid #059669',
+                            padding: '3px 8px',
+                            borderRadius: '6px',
+                            fontSize: '10px',
+                            fontWeight: 700,
+                            color: '#6ee7b7',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '5px',
+                            boxShadow: '0 2px 6px rgba(0,0,0,0.4)',
+                          }}
+                        >
+                          <span
+                            style={{
+                              width: '6px',
+                              height: '6px',
+                              borderRadius: '50%',
+                              backgroundColor: '#10b981',
+                              boxShadow: '0 0 6px #10b981',
+                            }}
+                          />
+                          {role === 'spoke' ? 'LIVE • District Hospital Hub' : 'LIVE • Sullia PHC Sub-Centre'}
+                        </div>
+                      </div>
+                    )}
+
                     <div
                       style={{
                         position: 'absolute',
                         bottom: '10px',
                         left: '10px',
-                        backgroundColor: 'rgba(0,0,0,0.65)',
+                        backgroundColor: 'rgba(0,0,0,0.75)',
                         backdropFilter: 'blur(4px)',
-                        padding: '4px 8px',
-                        borderRadius: '4px',
+                        padding: '4px 10px',
+                        borderRadius: '6px',
                         fontSize: '11px',
+                        fontWeight: 600,
                         color: '#f8fafc',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '6px',
+                        border: '1px solid rgba(255,255,255,0.1)',
                       }}
                     >
-                      {role === 'spoke' ? 'Remote Specialist (Hub Hospital)' : 'Patient Video (Sullia PHC)'}
+                      <span
+                        style={{
+                          width: '6px',
+                          height: '6px',
+                          borderRadius: '50%',
+                          backgroundColor: '#10b981',
+                        }}
+                      />
+                      {role === 'spoke'
+                        ? 'Dr. K. Srinivas, MD (District Specialist Hub)'
+                        : 'Patient Ramesh Gowda (Sullia PHC)'}
                     </div>
                   </div>
 
