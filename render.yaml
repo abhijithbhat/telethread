@@ -20,12 +20,10 @@ services:
       - key: GEMINI_API_KEY
         sync: false
 
-  # 2. Frontend React PWA Static Site
+  # 2. Frontend React PWA Static Site (Global Edge CDN - No region field)
   - type: web
     name: telethread-web
     runtime: static
-    region: oregon
-    plan: free
     rootDir: frontend
     buildCommand: npm install && npm run build
     staticPublishPath: ./dist
