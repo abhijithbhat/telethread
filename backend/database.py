@@ -24,7 +24,10 @@ def get_db():
 
 def init_db():
     """Initializes database tables and seeds demo cases if empty."""
-    from .models import Case
+    try:
+        from .models import Case
+    except ImportError:
+        from models import Case
 
     Base.metadata.create_all(bind=engine)
     db = SessionLocal()

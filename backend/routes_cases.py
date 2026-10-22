@@ -6,11 +6,18 @@ from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 from sqlalchemy.orm.attributes import flag_modified
 
-from .ai_helper import export_fhir_bundle, generate_clinical_brief
-from .database import get_db, init_db
-from .models import Case
-from .pdf_rx import format_sms_rx, generate_prescription_pdf
-from .triage import evaluate_triage
+try:
+    from .ai_helper import export_fhir_bundle, generate_clinical_brief
+    from .database import get_db, init_db
+    from .models import Case
+    from .pdf_rx import format_sms_rx, generate_prescription_pdf
+    from .triage import evaluate_triage
+except ImportError:
+    from ai_helper import export_fhir_bundle, generate_clinical_brief
+    from database import get_db, init_db
+    from models import Case
+    from pdf_rx import format_sms_rx, generate_prescription_pdf
+    from triage import evaluate_triage
 
 router = APIRouter(prefix="/api/cases", tags=["cases"])
 
