@@ -1,0 +1,73 @@
+services:
+  # 1. PostgreSQL Database for Case & Vitals Persistence
+  db:
+    image: postgres:16-alpine
+    container_name: telethread-postgres
+    restart: always
+    environment:
+      POSTGRES_USER: telethread
+      POSTGRES_PASSWORD: telethread_password
+      POSTGRES_DB: telethread_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U telethread -d telethread_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # 2. FastAPI Backend & WebRTC Signalling Server
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: telethread-backend
+    restart: always
+    ports:
+      - "8000:8000"
+    environment:
+      - DATABASE_URL=postgresql://telethread:telethread_password@db:5432/telethread_db
+      - GEMINI_API_KEY=${GEMINI_API_KEY:-}
+      - COTURN_HOST=coturn
+    depends_on:
+      db:
+        condition: service_healthy
+
+  # 3. Frontend React PWA (Nginx Static Server)
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: telethread-frontend
+    restart: always
+    ports:
+      - "5173:80"
+    environment:
+      - VITE_API_BASE_URL=http://localhost:8000
+    depends_on:
+      - backend
+
+  # 4. Coturn STUN / TURN Relay Server for Symmetric NAT Traversal
+  coturn:
+    image: coturn/coturn:latest
+    container_name: telethread-coturn
+    restart: always
+    ports:
+      - "3478:3478"
+      - "3478:3478/udp"
+      - "5349:5349"
+      - "5349:5349/udp"
+    command:
+      - "-n"
+      - "--log-file=stdout"
+      - "--min-port=49152"
+      - "--max-port=65535"
+      - "--realm=telethread.org"
+      - "--user=telethread:telethread_turn_secret"
+      - "--lt-cred-mech"
+      - "--fingerprint"
+
+volumes:
+  pgdata:
