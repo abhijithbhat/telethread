@@ -1,7 +1,10 @@
 from datetime import datetime, timezone
 from sqlalchemy import Boolean, Column, DateTime, Integer, JSON, String, Text
 
-from .database import Base
+try:
+    from .database import Base
+except ImportError:
+    from database import Base
 
 
 class Case(Base):
