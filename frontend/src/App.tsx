@@ -53,7 +53,11 @@ export function App() {
   const [activeCase, setActiveCase] = useState<CaseData>(DEFAULT_DEMO_CASE);
 
   // Resolve base API URL (Vite environment variable or default)
-  const apiBaseUrl = (import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000').replace(/\/+$/, '');
+  let rawApi = (import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000').trim();
+  if (rawApi && !/^https?:\/\//i.test(rawApi)) {
+    rawApi = `https://${rawApi}`;
+  }
+  const apiBaseUrl = rawApi.replace(/\/+$/, '');
   const wsBaseUrl = apiBaseUrl.replace(/^http/, 'ws');
 
   // Triggered when Spoke health worker clicks "Enter Priority Live Consult"

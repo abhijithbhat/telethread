@@ -225,6 +225,10 @@ export const SpokeTriageView: React.FC<SpokeTriageViewProps> = ({
 
       const caseData = await response.json();
       setSubmittedCase(caseData);
+      try {
+        sessionStorage.setItem('telethread_latest_case', JSON.stringify(caseData));
+        window.dispatchEvent(new CustomEvent('telethread_case_updated', { detail: caseData }));
+      } catch {}
     } catch (err: any) {
       console.warn('Backend /api/cases unavailable or offline, generating local triage case:', err);
       // Fallback for offline demo or when backend is booting up
@@ -266,6 +270,10 @@ export const SpokeTriageView: React.FC<SpokeTriageViewProps> = ({
       };
 
       setSubmittedCase(fallbackCase);
+      try {
+        sessionStorage.setItem('telethread_latest_case', JSON.stringify(fallbackCase));
+        window.dispatchEvent(new CustomEvent('telethread_case_updated', { detail: fallbackCase }));
+      } catch {}
     } finally {
       setIsSubmitting(false);
     }

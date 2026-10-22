@@ -169,6 +169,21 @@ export const HubQueueView: React.FC<HubQueueViewProps> = ({
     },
   ];
 
+  // Helper to merge local registered cases with fetched/fallback cases
+  const mergeLocalCases = (baseCases: any[]) => {
+    try {
+      const localStr = sessionStorage.getItem('telethread_latest_case');
+      if (localStr) {
+        const localCase = JSON.parse(localStr);
+        if (localCase && localCase.id) {
+          const filtered = baseCases.filter((c) => c.id !== localCase.id);
+          return [localCase, ...filtered];
+        }
+      }
+    } catch {}
+    return baseCases;
+  };
+
   // Fetch Cases every 3 seconds as required by contract
   const fetchCases = useCallback(async () => {
     try {
@@ -178,27 +193,37 @@ export const HubQueueView: React.FC<HubQueueViewProps> = ({
       }
       const data = await res.json();
       if (Array.isArray(data) && data.length > 0) {
-        setCases(data);
+        setCases(mergeLocalCases(data));
       } else {
         // Fallback to sample if backend returns empty list
-        setCases(fallbackCases);
+        setCases(mergeLocalCases(fallbackCases));
       }
       setError(null);
     } catch (err: any) {
       // Backend not running or offline: keep fallback cases active
-      if (cases.length === 0) {
-        setCases(fallbackCases);
-      }
+      setCases((prev) => (prev.length > 0 ? mergeLocalCases(prev) : mergeLocalCases(fallbackCases)));
       setError('Live link to backend is synchronizing');
     } finally {
       setLoading(false);
     }
-  }, [apiBaseUrl, cases.length]);
+  }, [apiBaseUrl]);
 
   useEffect(() => {
     fetchCases();
     const interval = setInterval(fetchCases, 3000);
-    return () => clearInterval(interval);
+
+    const handleCaseUpdated = (e: any) => {
+      const newCase = e.detail;
+      if (newCase) {
+        setCases((prev) => [newCase, ...prev.filter((c) => c.id !== newCase.id)]);
+      }
+    };
+    window.addEventListener('telethread_case_updated', handleCaseUpdated);
+
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener('telethread_case_updated', handleCaseUpdated);
+    };
   }, [fetchCases]);
 
   // Urgency sorting logic: CRITICAL (Red-Flag) pulses at top, followed by HIGH, then ROUTINE
@@ -209,9 +234,12 @@ export const HubQueueView: React.FC<HubQueueViewProps> = ({
   };
 
   const sortedCases = [...cases].sort((a, b) => {
+    // Ramesh Gowda TT-101 is the flagship emergency demo case - pin to #1 spot
+    if (a.id === 'TT-101' && b.id !== 'TT-101') return -1;
+    if (b.id === 'TT-101' && a.id !== 'TT-101') return 1;
     const weightDiff = urgencyWeight(b) - urgencyWeight(a);
     if (weightDiff !== 0) return weightDiff;
-    return (b.id || '').localeCompare(a.id || '');
+    return (a.id || '').localeCompare(b.id || '');
   });
 
   const filteredCases = sortedCases.filter((c) => {
