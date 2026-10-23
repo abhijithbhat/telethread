@@ -734,6 +734,8 @@ export const SpokeTriageView: React.FC<SpokeTriageViewProps> = ({
               padding: '24px',
               border: '1px solid #e2e8f0',
               boxShadow: '0 4px 12px rgba(0, 0, 0, 0.03)',
+              colorScheme: 'light',
+              color: '#0f172a',
             }}
           >
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '18px', borderBottom: '1px solid #f1f5f9', paddingBottom: '10px' }}>
@@ -760,7 +762,11 @@ export const SpokeTriageView: React.FC<SpokeTriageViewProps> = ({
                   borderRadius: '8px',
                   border: '1px solid #cbd5e1',
                   fontSize: '14px',
+                  fontWeight: 600,
                   outline: 'none',
+                  background: '#ffffff',
+                  color: '#0f172a',
+                  colorScheme: 'light',
                   boxSizing: 'border-box',
                 }}
               />
@@ -786,7 +792,11 @@ export const SpokeTriageView: React.FC<SpokeTriageViewProps> = ({
                     borderRadius: '8px',
                     border: '1px solid #cbd5e1',
                     fontSize: '14px',
+                    fontWeight: 600,
                     outline: 'none',
+                    background: '#ffffff',
+                    color: '#0f172a',
+                    colorScheme: 'light',
                     boxSizing: 'border-box',
                   }}
                 />
@@ -805,8 +815,11 @@ export const SpokeTriageView: React.FC<SpokeTriageViewProps> = ({
                     borderRadius: '8px',
                     border: '1px solid #cbd5e1',
                     fontSize: '14px',
+                    fontWeight: 600,
                     outline: 'none',
                     background: '#ffffff',
+                    color: '#0f172a',
+                    colorScheme: 'light',
                     boxSizing: 'border-box',
                   }}
                 >
@@ -831,8 +844,11 @@ export const SpokeTriageView: React.FC<SpokeTriageViewProps> = ({
                   borderRadius: '8px',
                   border: '1px solid #cbd5e1',
                   fontSize: '14px',
+                  fontWeight: 600,
                   outline: 'none',
                   background: '#ffffff',
+                  color: '#0f172a',
+                  colorScheme: 'light',
                   boxSizing: 'border-box',
                 }}
               >
@@ -860,7 +876,11 @@ export const SpokeTriageView: React.FC<SpokeTriageViewProps> = ({
                   borderRadius: '8px',
                   border: '1px solid #cbd5e1',
                   fontSize: '14px',
+                  fontWeight: 600,
                   outline: 'none',
+                  background: '#ffffff',
+                  color: '#0f172a',
+                  colorScheme: 'light',
                   boxSizing: 'border-box',
                 }}
               />
@@ -921,6 +941,8 @@ export const SpokeTriageView: React.FC<SpokeTriageViewProps> = ({
               padding: '24px',
               border: '1px solid #e2e8f0',
               boxShadow: '0 4px 12px rgba(0, 0, 0, 0.03)',
+              colorScheme: 'light',
+              color: '#0f172a',
             }}
           >
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '18px', borderBottom: '1px solid #f1f5f9', paddingBottom: '10px' }}>
@@ -967,9 +989,11 @@ export const SpokeTriageView: React.FC<SpokeTriageViewProps> = ({
                     borderRadius: '8px',
                     border: isCurrentBpCrisis ? '2px solid #ef4444' : '1px solid #cbd5e1',
                     fontSize: '15px',
-                    fontWeight: 600,
+                    fontWeight: 700,
                     outline: 'none',
-                    background: isCurrentBpCrisis ? '#fff1f2' : '#ffffff',
+                    background: isCurrentBpCrisis ? '#fef2f2' : '#ffffff',
+                    color: isCurrentBpCrisis ? '#b91c1c' : '#0f172a',
+                    colorScheme: 'light',
                   }}
                 />
                 <span style={{ fontSize: '18px', fontWeight: 700, color: '#94a3b8' }}>/</span>
@@ -984,9 +1008,11 @@ export const SpokeTriageView: React.FC<SpokeTriageViewProps> = ({
                     borderRadius: '8px',
                     border: isCurrentBpCrisis ? '2px solid #ef4444' : '1px solid #cbd5e1',
                     fontSize: '15px',
-                    fontWeight: 600,
+                    fontWeight: 700,
                     outline: 'none',
-                    background: isCurrentBpCrisis ? '#fff1f2' : '#ffffff',
+                    background: isCurrentBpCrisis ? '#fef2f2' : '#ffffff',
+                    color: isCurrentBpCrisis ? '#b91c1c' : '#0f172a',
+                    colorScheme: 'light',
                   }}
                 />
               </div>
@@ -1025,9 +1051,11 @@ export const SpokeTriageView: React.FC<SpokeTriageViewProps> = ({
                   borderRadius: '8px',
                   border: isCurrentSpo2Critical ? '2px solid #ef4444' : '1px solid #cbd5e1',
                   fontSize: '15px',
-                  fontWeight: 600,
+                  fontWeight: 700,
                   outline: 'none',
-                  background: isCurrentSpo2Critical ? '#fff1f2' : '#ffffff',
+                  background: isCurrentSpo2Critical ? '#fef2f2' : '#ffffff',
+                  color: isCurrentSpo2Critical ? '#b91c1c' : '#0f172a',
+                  colorScheme: 'light',
                   boxSizing: 'border-box',
                 }}
               />
@@ -1051,8 +1079,11 @@ export const SpokeTriageView: React.FC<SpokeTriageViewProps> = ({
                     borderRadius: '8px',
                     border: '1px solid #cbd5e1',
                     fontSize: '15px',
-                    fontWeight: 600,
+                    fontWeight: 700,
                     outline: 'none',
+                    background: '#ffffff',
+                    color: '#0f172a',
+                    colorScheme: 'light',
                     boxSizing: 'border-box',
                   }}
                 />
@@ -1073,8 +1104,11 @@ export const SpokeTriageView: React.FC<SpokeTriageViewProps> = ({
                     borderRadius: '8px',
                     border: '1px solid #cbd5e1',
                     fontSize: '15px',
-                    fontWeight: 600,
+                    fontWeight: 700,
                     outline: 'none',
+                    background: '#ffffff',
+                    color: '#0f172a',
+                    colorScheme: 'light',
                     boxSizing: 'border-box',
                   }}
                 />
@@ -1092,6 +1126,8 @@ export const SpokeTriageView: React.FC<SpokeTriageViewProps> = ({
             border: '1px solid #e2e8f0',
             boxShadow: '0 4px 12px rgba(0, 0, 0, 0.03)',
             marginTop: '24px',
+            colorScheme: 'light',
+            color: '#0f172a',
           }}
         >
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px', borderBottom: '1px solid #f1f5f9', paddingBottom: '10px' }}>
