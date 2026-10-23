@@ -248,18 +248,20 @@ export const ConsultRoom: React.FC<ConsultRoomProps> = ({
 
   // Attach local and remote streams to video tags across perspectives
   useEffect(() => {
-    if (localStream) {
-      if (spokeLocalVideoRef.current) spokeLocalVideoRef.current.srcObject = localStream;
-      if (doctorLocalVideoRef.current) doctorLocalVideoRef.current.srcObject = localStream;
+    if (spokeLocalVideoRef.current && localStream) {
+      spokeLocalVideoRef.current.srcObject = localStream;
     }
-  }, [localStream, perspective]);
-
-  useEffect(() => {
-    if (remoteStream) {
-      if (spokeRemoteVideoRef.current) spokeRemoteVideoRef.current.srcObject = remoteStream;
-      if (doctorRemoteVideoRef.current) doctorRemoteVideoRef.current.srcObject = remoteStream;
+    if (doctorLocalVideoRef.current && localStream) {
+      doctorLocalVideoRef.current.srcObject = localStream;
     }
-  }, [remoteStream, perspective]);
+    if (spokeRemoteVideoRef.current && remoteStream) {
+      spokeRemoteVideoRef.current.srcObject = remoteStream;
+    }
+    if (doctorRemoteVideoRef.current) {
+      // In single-device demo mode (or role === 'spoke'), Col 1 Patient Feed shows patient webcam
+      doctorRemoteVideoRef.current.srcObject = (role === 'spoke' && localStream) ? localStream : (remoteStream || localStream);
+    }
+  }, [localStream, remoteStream, role, perspective]);
 
   // Audio/Camera toggles
   const toggleMic = () => {

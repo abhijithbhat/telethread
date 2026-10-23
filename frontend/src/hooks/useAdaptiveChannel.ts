@@ -753,38 +753,111 @@ function createMockStream(role: string): MediaStream {
   canvas.height = 480;
   const ctx = canvas.getContext('2d')!;
 
-  let hue = role === 'spoke' ? 160 : 210;
+  const isHub = role === 'hub';
+
+  // Pre-load realistic doctor image for hub, or patient image for spoke
+  const img = new Image();
+  img.crossOrigin = 'anonymous';
+  let imgLoaded = false;
+  img.onload = () => {
+    imgLoaded = true;
+  };
+  img.src = isHub
+    ? 'https://images.unsplash.com/photo-1622253692010-333f2da6031d?auto=format&fit=crop&w=640&q=80'
+    : 'https://images.unsplash.com/photo-1544717305-2782549b5136?auto=format&fit=crop&w=640&q=80';
+
+  let frame = 0;
 
   function draw() {
-    hue = (hue + 0.3) % 360;
-    const gradient = ctx.createLinearGradient(0, 0, 640, 480);
-    gradient.addColorStop(0, `hsl(${hue}, 40%, 15%)`);
-    gradient.addColorStop(1, `hsl(${(hue + 60) % 360}, 50%, 8%)`);
-    ctx.fillStyle = gradient;
-    ctx.fillRect(0, 0, 640, 480);
+    frame++;
 
-    // Grid lines
-    ctx.strokeStyle = 'rgba(255, 255, 255, 0.05)';
-    ctx.lineWidth = 1;
-    for (let x = 0; x < 640; x += 40) {
+    if (imgLoaded) {
+      // Draw doctor portrait scaled to fill canvas
+      ctx.drawImage(img, 0, 0, 640, 480);
+
+      // Dark clinical vignette overlay
+      const grad = ctx.createLinearGradient(0, 0, 0, 480);
+      grad.addColorStop(0, 'rgba(3, 7, 18, 0.7)');
+      grad.addColorStop(0.2, 'rgba(3, 7, 18, 0.05)');
+      grad.addColorStop(0.7, 'rgba(3, 7, 18, 0.15)');
+      grad.addColorStop(1, 'rgba(3, 7, 18, 0.9)');
+      ctx.fillStyle = grad;
+      ctx.fillRect(0, 0, 640, 480);
+    } else {
+      // High-tech medical fallback while photo loads
+      const grad = ctx.createLinearGradient(0, 0, 640, 480);
+      grad.addColorStop(0, isHub ? '#0c1b33' : '#064e3b');
+      grad.addColorStop(1, '#020617');
+      ctx.fillStyle = grad;
+      ctx.fillRect(0, 0, 640, 480);
+
+      // Medical avatar circle
+      ctx.fillStyle = '#1e293b';
       ctx.beginPath();
-      ctx.moveTo(x, 0);
-      ctx.lineTo(x, 480);
-      ctx.stroke();
+      ctx.arc(320, 200, 70, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.font = '52px system-ui, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText(isHub ? '👨‍⚕️' : '🏥', 320, 218);
+      ctx.textAlign = 'left';
     }
 
-    ctx.fillStyle = '#ffffff';
-    ctx.font = 'bold 22px system-ui, sans-serif';
-    ctx.fillText(`TeleThread Stream [${role.toUpperCase()}]`, 40, 80);
+    // Top Live Tele-Consult Badge
+    ctx.fillStyle = 'rgba(15, 23, 42, 0.85)';
+    ctx.fillRect(16, 16, 260, 32);
+    ctx.strokeStyle = '#334155';
+    ctx.lineWidth = 1;
+    ctx.strokeRect(16, 16, 260, 32);
 
-    ctx.font = '14px monospace';
+    // Animated Green Pulse Dot
+    const pulseAlpha = 0.4 + 0.6 * Math.abs(Math.sin(frame * 0.06));
+    ctx.fillStyle = `rgba(34, 197, 94, ${pulseAlpha})`;
+    ctx.beginPath();
+    ctx.arc(32, 32, 5, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.fillStyle = '#f8fafc';
+    ctx.font = 'bold 12px system-ui, sans-serif';
+    ctx.fillText(isHub ? 'LIVE • Specialist Workstation' : 'LIVE • Spoke PHC Station', 46, 36);
+
+    // Audio equalizer animation in top right
+    const eqX = 570;
+    const eqY = 32;
+    for (let i = 0; i < 4; i++) {
+      const barH = 4 + 12 * Math.abs(Math.sin((frame + i * 10) * 0.12));
+      ctx.fillStyle = '#38bdf8';
+      ctx.fillRect(eqX + i * 6, eqY - barH / 2, 3, barH);
+    }
+
+    // Bottom Doctor / Station Banner
+    ctx.fillStyle = 'rgba(10, 15, 29, 0.9)';
+    ctx.fillRect(16, 396, 608, 68);
+    ctx.strokeStyle = 'rgba(56, 189, 248, 0.3)';
+    ctx.lineWidth = 1;
+    ctx.strokeRect(16, 396, 608, 68);
+
+    ctx.fillStyle = '#ffffff';
+    ctx.font = 'bold 15px system-ui, sans-serif';
+    ctx.fillText(
+      isHub ? '👨‍⚕️ Dr. K. Srinivas, MD (Cardiology)' : '🏥 Sullia PHC Sub-Centre Clinic',
+      30,
+      422
+    );
+
     ctx.fillStyle = '#38bdf8';
-    ctx.fillText(`Resolution: 640x480 | Mode: Active`, 40, 115);
-    ctx.fillStyle = '#94a3b8';
-    ctx.fillText(`Time: ${new Date().toLocaleTimeString()}`, 40, 140);
+    ctx.font = '11px monospace';
+    ctx.fillText(
+      isHub
+        ? 'District Hospital Mangalore • Specialist Telepresence'
+        : 'Western Ghats Tele-Station • Live Stream',
+      30,
+      446
+    );
 
     requestAnimationFrame(draw);
   }
+
   draw();
 
   const videoStream = canvas.captureStream(30);
@@ -796,7 +869,7 @@ function createMockStream(role: string): MediaStream {
     const osc = audioCtx.createOscillator();
     const dst = audioCtx.createMediaStreamDestination();
     const gain = audioCtx.createGain();
-    gain.gain.value = 0.001; // nearly silent
+    gain.gain.value = 0.001;
     osc.connect(gain);
     gain.connect(dst);
     osc.start();
