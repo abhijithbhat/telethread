@@ -48,6 +48,64 @@ export interface AutonomousActionResponse {
 }
 
 /**
+ * Sanitizes and guarantees a valid backend API URL for browser fetches.
+ * Prevents internal Render service names (e.g., 'telethread-api') from breaking cloud requests.
+ */
+export function sanitizeApiUrl(apiBaseUrl?: string): string {
+  let url = (apiBaseUrl || '').trim();
+
+  // If empty or missing, resolve properly
+  if (!url) {
+    url = resolveApiBaseUrl();
+  }
+
+  // Remove trailing slashes
+  url = url.replace(/\/+$/, '');
+
+  // Detect and resolve Render internal hostname (telethread-api)
+  const hostPart = url.replace(/^https?:\/\//i, '').replace(/\/+$/, '');
+  if (
+    hostPart === 'telethread-api' ||
+    (hostPart.includes('telethread-api') && !hostPart.includes('.onrender.com')) ||
+    (!hostPart.includes('.') && hostPart !== 'localhost' && !hostPart.startsWith('127.0.0.1') && hostPart !== '')
+  ) {
+    return 'https://telethread-api.onrender.com';
+  }
+
+  // If in browser and on *.onrender.com, ensure https://telethread-api.onrender.com
+  if (typeof window !== 'undefined') {
+    const isLocal =
+      window.location.hostname === 'localhost' ||
+      window.location.hostname === '127.0.0.1' ||
+      window.location.hostname === '0.0.0.0' ||
+      window.location.hostname === '';
+    if (!isLocal) {
+      if (
+        !url ||
+        url.includes('localhost') ||
+        url.includes('127.0.0.1') ||
+        url === 'https://telethread-api' ||
+        url === 'http://telethread-api' ||
+        window.location.hostname.endsWith('.onrender.com')
+      ) {
+        return 'https://telethread-api.onrender.com';
+      }
+    }
+  }
+
+  // Ensure protocol
+  if (!/^https?:\/\//i.test(url)) {
+    if (url.includes('localhost') || url.startsWith('127.0.0.1')) {
+      url = `http://${url}`;
+    } else {
+      url = `https://${url}`;
+    }
+  }
+
+  return url;
+}
+
+/**
  * Resolves the active TeleThread backend API URL.
  * In production on Render (or any cloud domain), automatically routes to https://telethread-api.onrender.com.
  * Allows custom override in localStorage ('TELETHREAD_API_URL').
@@ -57,7 +115,16 @@ export function resolveApiBaseUrl(): string {
   if (typeof window !== 'undefined') {
     const custom = localStorage.getItem('TELETHREAD_API_URL');
     if (custom && custom.trim()) {
-      rawApi = custom.trim();
+      const cleanCustom = custom.trim().replace(/^https?:\/\//i, '').replace(/\/+$/, '');
+      if (
+        cleanCustom === 'telethread-api' ||
+        (cleanCustom.includes('telethread-api') && !cleanCustom.includes('.onrender.com')) ||
+        (!cleanCustom.includes('.') && cleanCustom !== 'localhost' && !cleanCustom.startsWith('127.0.0.1'))
+      ) {
+        localStorage.removeItem('TELETHREAD_API_URL');
+      } else {
+        rawApi = custom.trim();
+      }
     }
   }
 
@@ -73,10 +140,30 @@ export function resolveApiBaseUrl(): string {
       hostname === '0.0.0.0' ||
       hostname === '';
 
-    // If running in browser and NOT localhost, but rawApi is empty or points to localhost
-    if (!isLocalhost && (!rawApi || rawApi.includes('localhost') || rawApi.includes('127.0.0.1'))) {
-      rawApi = 'https://telethread-api.onrender.com';
+    // If running in browser and NOT localhost
+    if (!isLocalhost) {
+      const hostPart = rawApi.replace(/^https?:\/\//i, '').replace(/\/+$/, '');
+      if (
+        !rawApi ||
+        rawApi.includes('localhost') ||
+        rawApi.includes('127.0.0.1') ||
+        hostPart === 'telethread-api' ||
+        (hostPart.includes('telethread-api') && !hostPart.includes('.onrender.com')) ||
+        hostname.endsWith('.onrender.com')
+      ) {
+        rawApi = 'https://telethread-api.onrender.com';
+      }
     }
+  }
+
+  // Catch any remaining telethread-api internal name
+  const hostOnly = rawApi.replace(/^https?:\/\//i, '').replace(/\/+$/, '');
+  if (
+    hostOnly === 'telethread-api' ||
+    (hostOnly.includes('telethread-api') && !hostOnly.includes('.onrender.com')) ||
+    (!hostOnly.includes('.') && hostOnly !== 'localhost' && !hostOnly.startsWith('127.0.0.1') && hostOnly !== '')
+  ) {
+    rawApi = 'https://telethread-api.onrender.com';
   }
 
   if (!rawApi) {
@@ -185,6 +272,7 @@ export async function transcribeAudio(
   audioBlob: Blob,
   languageCode: 'kn-IN' | 'en-IN' = 'kn-IN'
 ): Promise<STTResponse> {
+  const cleanApi = sanitizeApiUrl(apiBaseUrl);
   try {
     const blobType = (audioBlob.type || '').toLowerCase();
     let filename = 'patient_voice.webm';
@@ -202,7 +290,7 @@ export async function transcribeAudio(
     formData.append('audio', audioBlob, filename);
     formData.append('language_code', languageCode);
 
-    const res = await fetch(`${apiBaseUrl}/api/agent/stt`, {
+    const res = await fetch(`${cleanApi}/api/agent/stt`, {
       method: 'POST',
       body: formData,
     });
@@ -213,7 +301,7 @@ export async function transcribeAudio(
         return data;
       }
     } else {
-      console.warn(`Sarvam STT HTTP ${res.status} from ${apiBaseUrl}`);
+      console.warn(`Sarvam STT HTTP ${res.status} from ${cleanApi}`);
     }
   } catch (err) {
     console.warn('Sarvam backend STT network error:', err);
@@ -288,6 +376,8 @@ export async function speakText(
   languageCode: 'kn-IN' | 'en-IN' = 'kn-IN',
   existingAudioBase64?: string | null
 ): Promise<void> {
+  const cleanApi = sanitizeApiUrl(apiBaseUrl);
+
   // Stop any currently playing audio
   if (currentAudioElement) {
     currentAudioElement.pause();
@@ -312,7 +402,7 @@ export async function speakText(
 
   // 2. Otherwise, request Sarvam TTS from backend
   try {
-    const res = await fetch(`${apiBaseUrl}/api/agent/tts`, {
+    const res = await fetch(`${cleanApi}/api/agent/tts`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -363,7 +453,8 @@ export async function executeAutonomousAction(
   mode: 'triage' | 'consult' = 'triage',
   currentCaseId?: string
 ): Promise<AutonomousActionResponse> {
-  const res = await fetch(`${apiBaseUrl}/api/agent/autonomous-action`, {
+  const cleanApi = sanitizeApiUrl(apiBaseUrl);
+  const res = await fetch(`${cleanApi}/api/agent/autonomous-action`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
@@ -386,8 +477,9 @@ export async function executeAutonomousAction(
  * Fetches current Sarvam API key rotator status.
  */
 export async function fetchSarvamKeyStatus(apiBaseUrl: string): Promise<SarvamKeyStatus> {
+  const cleanApi = sanitizeApiUrl(apiBaseUrl);
   try {
-    const res = await fetch(`${apiBaseUrl}/api/agent/keys/status`);
+    const res = await fetch(`${cleanApi}/api/agent/keys/status`);
     if (res.ok) {
       return await res.json();
     }
@@ -409,7 +501,8 @@ export async function addSarvamKeys(
   apiBaseUrl: string,
   keys: string | string[]
 ): Promise<{ status: string; message: string; key_pool: SarvamKeyStatus }> {
-  const res = await fetch(`${apiBaseUrl}/api/agent/keys/add`, {
+  const cleanApi = sanitizeApiUrl(apiBaseUrl);
+  const res = await fetch(`${cleanApi}/api/agent/keys/add`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ keys }),

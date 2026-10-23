@@ -40,6 +40,7 @@ import {
   executeAutonomousAction,
   resolveApiBaseUrl,
   resolveWsBaseUrl,
+  sanitizeApiUrl,
 } from '../utils/voiceService';
 
 export interface CaseTimelineItem {
@@ -114,9 +115,11 @@ export const ConsultRoom: React.FC<ConsultRoomProps> = ({
   onLeave,
 }) => {
   // Normalize backend URLs
-  const effectiveApiBaseUrl = (apiBaseUrl && !apiBaseUrl.includes('localhost'))
-    ? apiBaseUrl
-    : resolveApiBaseUrl();
+  const effectiveApiBaseUrl = sanitizeApiUrl(
+    apiBaseUrl && !apiBaseUrl.includes('localhost') && !apiBaseUrl.endsWith('telethread-api')
+      ? apiBaseUrl
+      : resolveApiBaseUrl()
+  );
   const effectiveWsBaseUrl = (wsBaseUrl && !wsBaseUrl.includes('localhost'))
     ? wsBaseUrl
     : resolveWsBaseUrl(effectiveApiBaseUrl);

@@ -20,6 +20,7 @@ import {
   fetchSarvamKeyStatus,
   resolveApiBaseUrl,
   resolveWsBaseUrl,
+  sanitizeApiUrl,
   type SarvamKeyStatus,
 } from './utils/voiceService';
 import type { Language } from './i18n/translations';
@@ -73,7 +74,7 @@ export function App() {
   });
 
   // Resolve base API URL (smart cloud detection: routes to https://telethread-api.onrender.com when deployed)
-  const apiBaseUrl = resolveApiBaseUrl();
+  const apiBaseUrl = sanitizeApiUrl(resolveApiBaseUrl());
   const wsBaseUrl = resolveWsBaseUrl(apiBaseUrl);
 
   // Load key pool status on mount with retry (handles Render free-tier cold starts)

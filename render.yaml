@@ -31,10 +31,7 @@ services:
     staticPublishPath: ./dist
     envVars:
       - key: VITE_API_BASE_URL
-        fromService:
-          type: web
-          name: telethread-api
-          property: host
+        value: https://telethread-api.onrender.com
     routes:
       - type: rewrite
         source: /*

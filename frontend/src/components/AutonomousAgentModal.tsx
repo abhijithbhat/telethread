@@ -24,6 +24,7 @@ import {
   executeAutonomousAction,
   fetchSarvamKeyStatus,
   addSarvamKeys,
+  sanitizeApiUrl,
   type SarvamKeyStatus,
   type AutonomousActionResponse,
 } from '../utils/voiceService';
@@ -47,6 +48,7 @@ export function AutonomousAgentModal({
   currentCaseId,
   defaultMode = 'triage',
 }: AutonomousAgentModalProps) {
+  const effectiveApi = sanitizeApiUrl(apiBaseUrl);
   const [mode, setMode] = useState<'triage' | 'consult'>(defaultMode);
   const [selectedLang, setSelectedLang] = useState<'kn-IN' | 'en-IN'>(lang === 'kn' ? 'kn-IN' : 'en-IN');
   const [isRecording, setIsRecording] = useState(false);
@@ -74,7 +76,7 @@ export function AutonomousAgentModal({
     if (isOpen) {
       loadKeyStatus();
     }
-  }, [isOpen, apiBaseUrl]);
+  }, [isOpen, effectiveApi]);
 
   // Recording timer
   useEffect(() => {
@@ -88,14 +90,14 @@ export function AutonomousAgentModal({
   }, [isRecording]);
 
   const loadKeyStatus = async () => {
-    const status = await fetchSarvamKeyStatus(apiBaseUrl);
+    const status = await fetchSarvamKeyStatus(effectiveApi);
     setKeyStatus(status);
   };
 
   const handleAddKeys = async () => {
     if (!newKeysInput.trim()) return;
     try {
-      const res = await addSarvamKeys(apiBaseUrl, newKeysInput);
+      const res = await addSarvamKeys(effectiveApi, newKeysInput);
       setKeyStatus(res.key_pool);
       setNewKeysInput('');
       setKeySuccessMsg(`Added keys! Total active: ${res.key_pool.total_keys}`);
@@ -130,7 +132,7 @@ export function AutonomousAgentModal({
     try {
       const audioBlob = await stopAudioRecording();
       // Call Sarvam STT
-      const stt = await transcribeAudio(apiBaseUrl, audioBlob, selectedLang);
+      const stt = await transcribeAudio(effectiveApi, audioBlob, selectedLang);
       let text = stt.transcript;
 
       // If STT returned empty, attempt browser recognition
@@ -154,7 +156,7 @@ export function AutonomousAgentModal({
         err.message?.includes('Failed to fetch') ||
         err.message?.includes('NetworkError');
       const hint = isColdOrBlocked
-        ? ` (Connecting to ${apiBaseUrl}. If Render backend was asleep, please allow ~20-30s for the free container to wake up and retry).`
+        ? ` (Connecting to ${effectiveApi}. If Render backend was asleep, please allow ~20-30s for the free container to wake up and retry).`
         : '';
       setErrorMsg(`Audio processing failed: ${err.message}${hint}`);
     } finally {
@@ -171,7 +173,7 @@ export function AutonomousAgentModal({
 
     try {
       const actionRes = await executeAutonomousAction(
-        apiBaseUrl,
+        effectiveApi,
         text,
         selectedLang,
         mode,
@@ -181,7 +183,7 @@ export function AutonomousAgentModal({
 
       // Speak back response automatically using Sarvam Bulbul TTS
       if (actionRes.spoken_reply) {
-        speakText(apiBaseUrl, actionRes.spoken_reply, selectedLang, actionRes.audio_base64);
+        speakText(effectiveApi, actionRes.spoken_reply, selectedLang, actionRes.audio_base64);
       }
     } catch (err: any) {
       const isColdOrBlocked =
@@ -189,7 +191,7 @@ export function AutonomousAgentModal({
         err.message?.includes('Failed to fetch') ||
         err.message?.includes('NetworkError');
       const hint = isColdOrBlocked
-        ? ` (Could not reach ${apiBaseUrl}. If Render free-tier was asleep, please wait ~20-30s for the container to wake up and try again).`
+        ? ` (Could not reach ${effectiveApi}. If Render free-tier was asleep, please wait ~20-30s for the container to wake up and try again).`
         : '';
       setErrorMsg(`Autonomous action failed: ${err.message}${hint}`);
     } finally {
@@ -381,7 +383,7 @@ export function AutonomousAgentModal({
               </div>
 
               <div style={{ fontSize: '11px', color: '#94a3b8', marginBottom: '6px' }}>
-                Backend API: <code style={{ color: '#38bdf8', backgroundColor: '#0f172a', padding: '2px 6px', borderRadius: '4px' }}>{apiBaseUrl}</code>
+                Backend API: <code style={{ color: '#38bdf8', backgroundColor: '#0f172a', padding: '2px 6px', borderRadius: '4px' }}>{effectiveApi}</code>
               </div>
 
               <div style={{ fontSize: '11px', color: '#94a3b8', marginBottom: '10px' }}>
@@ -710,7 +712,7 @@ export function AutonomousAgentModal({
                 <button
                   type="button"
                   onClick={() =>
-                    speakText(apiBaseUrl, result.spoken_reply, selectedLang, result.audio_base64)
+                    speakText(effectiveApi, result.spoken_reply, selectedLang, result.audio_base64)
                   }
                   style={{
                     padding: '4px 8px',
