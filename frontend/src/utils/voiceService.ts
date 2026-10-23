@@ -47,6 +47,56 @@ export interface AutonomousActionResponse {
   draft_rx?: any[];
 }
 
+/**
+ * Resolves the active TeleThread backend API URL.
+ * In production on Render (or any cloud domain), automatically routes to https://telethread-api.onrender.com.
+ * Allows custom override in localStorage ('TELETHREAD_API_URL').
+ */
+export function resolveApiBaseUrl(): string {
+  if (typeof window !== 'undefined') {
+    const custom = localStorage.getItem('TELETHREAD_API_URL');
+    if (custom && custom.trim()) {
+      return custom.trim().replace(/\/+$/, '');
+    }
+  }
+
+  let rawApi = (import.meta.env.VITE_API_BASE_URL || '').trim();
+
+  if (typeof window !== 'undefined') {
+    const hostname = window.location.hostname;
+    const isLocalhost =
+      hostname === 'localhost' ||
+      hostname === '127.0.0.1' ||
+      hostname === '0.0.0.0' ||
+      hostname === '';
+
+    // If running in browser and NOT localhost, but rawApi is empty or points to localhost
+    if (!isLocalhost && (!rawApi || rawApi.includes('localhost') || rawApi.includes('127.0.0.1'))) {
+      return 'https://telethread-api.onrender.com';
+    }
+  }
+
+  if (!rawApi) {
+    rawApi = 'http://localhost:8000';
+  }
+
+  if (!/^https?:\/\//i.test(rawApi)) {
+    rawApi = `https://${rawApi}`;
+  }
+
+  return rawApi.replace(/\/+$/, '');
+}
+
+/**
+ * Resolves the corresponding WebSocket URL (ws:// or wss://)
+ */
+export function resolveWsBaseUrl(apiBaseUrl: string): string {
+  if (apiBaseUrl.startsWith('https://')) {
+    return apiBaseUrl.replace(/^https:\/\//, 'wss://');
+  }
+  return apiBaseUrl.replace(/^http:\/\//, 'ws://');
+}
+
 let activeMediaRecorder: MediaRecorder | null = null;
 let activeAudioStream: MediaStream | null = null;
 let recordedChunks: Blob[] = [];
@@ -54,18 +104,28 @@ let currentAudioElement: HTMLAudioElement | null = null;
 
 /**
  * Starts recording audio from the user microphone.
+ * Supports Chrome (audio/webm) and Safari/iOS (audio/mp4, audio/aac).
  */
 export async function startAudioRecording(): Promise<void> {
   recordedChunks = [];
   const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
   activeAudioStream = stream;
 
-  // Prefer audio/webm, fallback to audio/mp4 or default
-  const mimeType = MediaRecorder.isTypeSupported('audio/webm;codecs=opus')
-    ? 'audio/webm;codecs=opus'
-    : MediaRecorder.isTypeSupported('audio/webm')
-    ? 'audio/webm'
-    : '';
+  // Auto-detect container supported by browser (Safari uses audio/mp4, Chrome uses audio/webm)
+  let mimeType = '';
+  if (typeof MediaRecorder !== 'undefined' && typeof MediaRecorder.isTypeSupported === 'function') {
+    if (MediaRecorder.isTypeSupported('audio/webm;codecs=opus')) {
+      mimeType = 'audio/webm;codecs=opus';
+    } else if (MediaRecorder.isTypeSupported('audio/webm')) {
+      mimeType = 'audio/webm';
+    } else if (MediaRecorder.isTypeSupported('audio/mp4')) {
+      mimeType = 'audio/mp4';
+    } else if (MediaRecorder.isTypeSupported('audio/aac')) {
+      mimeType = 'audio/aac';
+    } else if (MediaRecorder.isTypeSupported('audio/ogg')) {
+      mimeType = 'audio/ogg';
+    }
+  }
 
   const options: MediaRecorderOptions = mimeType ? { mimeType } : {};
   activeMediaRecorder = new MediaRecorder(stream, options);
@@ -89,9 +149,8 @@ export async function stopAudioRecording(): Promise<Blob> {
     }
 
     activeMediaRecorder.onstop = () => {
-      const audioBlob = new Blob(recordedChunks, {
-        type: activeMediaRecorder?.mimeType || 'audio/webm',
-      });
+      const mime = activeMediaRecorder?.mimeType || 'audio/webm';
+      const audioBlob = new Blob(recordedChunks, { type: mime });
 
       // Stop all microphone tracks to release the hardware indicator
       if (activeAudioStream) {
@@ -116,8 +175,20 @@ export async function transcribeAudio(
   languageCode: 'kn-IN' | 'en-IN' = 'kn-IN'
 ): Promise<STTResponse> {
   try {
+    const blobType = (audioBlob.type || '').toLowerCase();
+    let filename = 'patient_voice.webm';
+    if (blobType.includes('mp4') || blobType.includes('m4a')) {
+      filename = 'patient_voice.mp4';
+    } else if (blobType.includes('aac')) {
+      filename = 'patient_voice.aac';
+    } else if (blobType.includes('wav')) {
+      filename = 'patient_voice.wav';
+    } else if (blobType.includes('ogg')) {
+      filename = 'patient_voice.ogg';
+    }
+
     const formData = new FormData();
-    formData.append('audio', audioBlob, 'patient_voice.webm');
+    formData.append('audio', audioBlob, filename);
     formData.append('language_code', languageCode);
 
     const res = await fetch(`${apiBaseUrl}/api/agent/stt`, {
@@ -130,9 +201,11 @@ export async function transcribeAudio(
       if (data.transcript && data.transcript.trim()) {
         return data;
       }
+    } else {
+      console.warn(`Sarvam STT HTTP ${res.status} from ${apiBaseUrl}`);
     }
   } catch (err) {
-    console.warn('Sarvam backend STT error, will check browser fallback:', err);
+    console.warn('Sarvam backend STT network error:', err);
   }
 
   return {

@@ -138,6 +138,15 @@ def transcribe_audio_sarvam(
     Automatically rotates through available API keys on 401, 402, 403, 429, or 5xx.
     Falls back gracefully to local browser fallback on failure without raising exceptions.
     """
+    if not file_bytes:
+        logger.warning("Empty audio payload received for transcription.")
+        return {
+            "transcript": "",
+            "language_code": language_code,
+            "provider": "browser_fallback",
+            "error": "No audio data recorded",
+        }
+
     keys = sarvam_rotator.get_all_keys()
     if not keys:
         logger.warning("No Sarvam API keys available in rotator. Returning browser fallback.")
@@ -145,8 +154,24 @@ def transcribe_audio_sarvam(
             "transcript": "",
             "language_code": language_code,
             "provider": "browser_fallback",
-            "error": "Using local browser speech recognition",
+            "error": "No Sarvam API keys configured in pool",
         }
+
+    # Determine MIME container type based on filename (supports Safari MP4/AAC and Chrome WebM)
+    fname = filename or "audio.webm"
+    fname_lower = fname.lower()
+    if fname_lower.endswith(".mp4") or fname_lower.endswith(".m4a"):
+        content_type = "audio/mp4"
+    elif fname_lower.endswith(".aac"):
+        content_type = "audio/aac"
+    elif fname_lower.endswith(".wav"):
+        content_type = "audio/wav"
+    elif fname_lower.endswith(".mp3"):
+        content_type = "audio/mpeg"
+    elif fname_lower.endswith(".ogg"):
+        content_type = "audio/ogg"
+    else:
+        content_type = "audio/webm"
 
     url = "https://api.sarvam.ai/speech-to-text"
     num_keys = len(keys)
@@ -161,7 +186,7 @@ def transcribe_audio_sarvam(
             "api-subscription-key": key,
         }
         files = {
-            "file": (filename or "audio.webm", file_bytes, "audio/webm"),
+            "file": (fname, file_bytes, content_type),
         }
         data = {
             "model": "saaras:v3",

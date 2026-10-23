@@ -103,16 +103,25 @@ def add_sarvam_keys(payload: AddKeysRequest):
 
 @router.post("/stt")
 async def speech_to_text(
-    audio: UploadFile = File(..., description="Audio file blob (webm/wav/mp3)"),
+    audio: Optional[UploadFile] = File(None, description="Audio file blob (webm/wav/mp3/mp4)"),
+    file: Optional[UploadFile] = File(None, description="Alternative field name for audio file"),
     language_code: str = Form("kn-IN", description="Target language code: kn-IN or en-IN"),
 ):
     """
     Multi-key rotating Speech-to-Text via Sarvam saaras:v3.
     Falls back gracefully to browser speech recognition if all keys fail.
     """
+    upload = audio or file
+    if not upload:
+        return {
+            "transcript": "",
+            "language_code": language_code,
+            "provider": "browser_fallback",
+            "error": "No audio file provided in request",
+        }
     try:
-        file_bytes = await audio.read()
-        filename = audio.filename or "recording.webm"
+        file_bytes = await upload.read()
+        filename = upload.filename or "recording.webm"
         result = transcribe_audio_sarvam(
             file_bytes=file_bytes,
             filename=filename,

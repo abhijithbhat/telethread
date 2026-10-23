@@ -16,7 +16,12 @@ import { ConsultRoom, type CaseData } from './components/ConsultRoom';
 import { BenchmarksView } from './components/BenchmarksView';
 import { TalukaUmapView } from './components/TalukaUmapView';
 import { AutonomousAgentModal } from './components/AutonomousAgentModal';
-import { fetchSarvamKeyStatus, type SarvamKeyStatus } from './utils/voiceService';
+import {
+  fetchSarvamKeyStatus,
+  resolveApiBaseUrl,
+  resolveWsBaseUrl,
+  type SarvamKeyStatus,
+} from './utils/voiceService';
 import type { Language } from './i18n/translations';
 
 // Baseline demo case conforming to SHARED_CONTRACT.md
@@ -67,17 +72,31 @@ export function App() {
     masked_active_key: null,
   });
 
-  // Resolve base API URL (Vite environment variable or default)
-  let rawApi = (import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000').trim();
-  if (rawApi && !/^https?:\/\//i.test(rawApi)) {
-    rawApi = `https://${rawApi}`;
-  }
-  const apiBaseUrl = rawApi.replace(/\/+$/, '');
-  const wsBaseUrl = apiBaseUrl.replace(/^http/, 'ws');
+  // Resolve base API URL (smart cloud detection: routes to https://telethread-api.onrender.com when deployed)
+  const apiBaseUrl = resolveApiBaseUrl();
+  const wsBaseUrl = resolveWsBaseUrl(apiBaseUrl);
 
-  // Load key pool status on mount
+  // Load key pool status on mount with retry (handles Render free-tier cold starts)
   useEffect(() => {
-    fetchSarvamKeyStatus(apiBaseUrl).then(setKeyStatus).catch(() => {});
+    let active = true;
+    let attempt = 0;
+
+    const check = async () => {
+      try {
+        const st = await fetchSarvamKeyStatus(apiBaseUrl);
+        if (active) setKeyStatus(st);
+      } catch (_) {
+        if (active && attempt < 4) {
+          attempt++;
+          setTimeout(check, 3000);
+        }
+      }
+    };
+
+    check();
+    return () => {
+      active = false;
+    };
   }, [apiBaseUrl]);
 
   // Triggered when Spoke health worker clicks "Enter Priority Live Consult"

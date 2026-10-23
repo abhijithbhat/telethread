@@ -149,7 +149,14 @@ export function AutonomousAgentModal({
         );
       }
     } catch (err: any) {
-      setErrorMsg(`Audio processing failed: ${err.message}`);
+      const isColdOrBlocked =
+        err.message?.includes('Load failed') ||
+        err.message?.includes('Failed to fetch') ||
+        err.message?.includes('NetworkError');
+      const hint = isColdOrBlocked
+        ? ` (Connecting to ${apiBaseUrl}. If Render backend was asleep, please allow ~20-30s for the free container to wake up and retry).`
+        : '';
+      setErrorMsg(`Audio processing failed: ${err.message}${hint}`);
     } finally {
       setIsProcessing(false);
     }
@@ -177,7 +184,14 @@ export function AutonomousAgentModal({
         speakText(apiBaseUrl, actionRes.spoken_reply, selectedLang, actionRes.audio_base64);
       }
     } catch (err: any) {
-      setErrorMsg(`Autonomous action failed: ${err.message}`);
+      const isColdOrBlocked =
+        err.message?.includes('Load failed') ||
+        err.message?.includes('Failed to fetch') ||
+        err.message?.includes('NetworkError');
+      const hint = isColdOrBlocked
+        ? ` (Could not reach ${apiBaseUrl}. If Render free-tier was asleep, please wait ~20-30s for the container to wake up and try again).`
+        : '';
+      setErrorMsg(`Autonomous action failed: ${err.message}${hint}`);
     } finally {
       setIsProcessing(false);
     }
@@ -366,11 +380,15 @@ export function AutonomousAgentModal({
                 </button>
               </div>
 
+              <div style={{ fontSize: '11px', color: '#94a3b8', marginBottom: '6px' }}>
+                Backend API: <code style={{ color: '#38bdf8', backgroundColor: '#0f172a', padding: '2px 6px', borderRadius: '4px' }}>{apiBaseUrl}</code>
+              </div>
+
               <div style={{ fontSize: '11px', color: '#94a3b8', marginBottom: '10px' }}>
-                Status: <strong style={{ color: keyStatus.has_keys ? '#34d399' : '#f87171' }}>
+                Sarvam Pool: <strong style={{ color: keyStatus.has_keys ? '#34d399' : '#f87171' }}>
                   {keyStatus.has_keys
-                    ? `Pool Active (${keyStatus.total_keys} keys). Active: Key #${keyStatus.active_key_index + 1}`
-                    : 'No API keys in pool (Using Browser Fallbacks)'}
+                    ? `Active (${keyStatus.total_keys} keys). Current: Key #${keyStatus.active_key_index + 1}`
+                    : 'No API keys registered (Click below or paste Sarvam key)'}
                 </strong>
                 {keyStatus.masked_active_key && ` • Active: ${keyStatus.masked_active_key}`}
               </div>
