@@ -148,6 +148,9 @@ export function App() {
     <div
       style={{
         minHeight: '100vh',
+        height: activeView === 'consult' ? '100vh' : 'auto',
+        maxHeight: activeView === 'consult' ? '100vh' : 'none',
+        overflow: activeView === 'consult' ? 'hidden' : 'visible',
         backgroundColor: '#070a13',
         color: '#f8fafc',
         display: 'flex',
@@ -449,7 +452,15 @@ export function App() {
       </header>
 
       {/* 2. Active Screen Content */}
-      <main style={{ flex: '1 1 auto', display: 'flex', flexDirection: 'column' }}>
+      <main
+        style={{
+          flex: '1 1 auto',
+          display: 'flex',
+          flexDirection: 'column',
+          minHeight: 0,
+          overflow: activeView === 'consult' ? 'hidden' : 'visible',
+        }}
+      >
         {activeView === 'spoke' && (
           <SpokeTriageView
             apiBaseUrl={apiBaseUrl}

@@ -139,6 +139,8 @@ export const ConsultRoom: React.FC<ConsultRoomProps> = ({
   // Media Controls
   const [isMicMuted, setIsMicMuted] = useState(false);
   const [isCamOff, setIsCamOff] = useState(false);
+  // Camera framing mode: 'contain' prevents cropping/zooming, 'cover' fills box
+  const [cameraFit, setCameraFit] = useState<'contain' | 'cover'>('contain');
 
   // Spoke 15s Voice Note Recorder
   const [isRecordingVoice, setIsRecordingVoice] = useState(false);
@@ -477,8 +479,6 @@ export const ConsultRoom: React.FC<ConsultRoomProps> = ({
     setAgentStatusNote('AI Co-Pilot synthesizing differential diagnosis & SOAP note...');
 
     try {
-      await handleSnapPhoto();
-
       const actionRes = await executeAutonomousAction(
         effectiveApiBaseUrl,
         `Evaluate ongoing consultation on ${caseData.id}. Review acute complaints and draft emergency medication orders.`,
@@ -751,7 +751,10 @@ export const ConsultRoom: React.FC<ConsultRoomProps> = ({
             display: 'grid',
             gridTemplateColumns: '1fr 1fr',
             gap: '12px',
-            minHeight: isSplit ? '220px' : '300px',
+            height: isSplit ? '220px' : '280px',
+            maxHeight: isSplit ? '220px' : '280px',
+            width: '100%',
+            flexShrink: 0,
           }}
         >
           {/* Patient Local Camera */}
@@ -762,6 +765,7 @@ export const ConsultRoom: React.FC<ConsultRoomProps> = ({
               borderRadius: '10px',
               border: '1px solid #1e293b',
               overflow: 'hidden',
+              height: '100%',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
@@ -775,7 +779,7 @@ export const ConsultRoom: React.FC<ConsultRoomProps> = ({
               style={{
                 width: '100%',
                 height: '100%',
-                objectFit: 'cover',
+                objectFit: cameraFit,
                 transform: 'scaleX(-1)',
                 display: currentTier <= 2 ? 'block' : 'none',
               }}
@@ -816,6 +820,7 @@ export const ConsultRoom: React.FC<ConsultRoomProps> = ({
               borderRadius: '10px',
               border: '1px solid #1e293b',
               overflow: 'hidden',
+              height: '100%',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
@@ -828,21 +833,33 @@ export const ConsultRoom: React.FC<ConsultRoomProps> = ({
               style={{
                 width: '100%',
                 height: '100%',
-                objectFit: 'cover',
+                objectFit: cameraFit,
                 display: isPeerConnected && remoteStream && currentTier <= 2 ? 'block' : 'none',
               }}
             />
 
             {/* Telepresence feed if peer loopback */}
             {(!isPeerConnected || !remoteStream || currentTier >= 3) && (
-              <div style={{ position: 'relative', width: '100%', height: '100%' }}>
+              <div
+                style={{
+                  position: 'relative',
+                  width: '100%',
+                  height: '100%',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  backgroundColor: '#030712',
+                }}
+              >
                 <img
                   src="https://images.unsplash.com/photo-1622253692010-333f2da6031d?auto=format&fit=crop&w=800&q=80"
                   alt="Doctor Stream"
                   style={{
-                    width: '100%',
-                    height: '100%',
-                    objectFit: 'cover',
+                    maxWidth: '100%',
+                    maxHeight: '100%',
+                    width: 'auto',
+                    height: 'auto',
+                    objectFit: cameraFit,
                     filter: currentTier === 2 ? 'blur(1.5px)' : 'none',
                   }}
                 />
@@ -883,7 +900,7 @@ export const ConsultRoom: React.FC<ConsultRoomProps> = ({
           </div>
         </div>
 
-        {/* Media Controls Bar */}
+        {/* Media Controls Bar with Zoom/Framing Toggle */}
         <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
           <button
             type="button"
@@ -926,6 +943,27 @@ export const ConsultRoom: React.FC<ConsultRoomProps> = ({
           >
             {isCamOff || currentTier >= 3 ? <VideoOff size={14} /> : <Video size={14} />}
             <span>{currentTier >= 3 ? 'Video Off (Tier 3/4)' : isCamOff ? 'Turn Cam On' : 'Turn Cam Off'}</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setCameraFit(cameraFit === 'contain' ? 'cover' : 'contain')}
+            style={{
+              padding: '8px 12px',
+              borderRadius: '6px',
+              backgroundColor: '#1e293b',
+              color: '#38bdf8',
+              border: '1px solid #334155',
+              cursor: 'pointer',
+              fontSize: '11px',
+              fontWeight: 600,
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+            }}
+            title="Toggle video framing: Fit full camera or Fill box"
+          >
+            <span>{cameraFit === 'contain' ? '🔍 Zoom Out (Full Frame)' : '🔍 Fill Screen'}</span>
           </button>
         </div>
 
@@ -1208,6 +1246,8 @@ export const ConsultRoom: React.FC<ConsultRoomProps> = ({
           flex: '1 1 auto',
           padding: '16px',
           overflow: 'hidden',
+          minHeight: 0,
+          height: '100%',
           backgroundColor: '#070a13',
         }}
       >
@@ -1224,6 +1264,8 @@ export const ConsultRoom: React.FC<ConsultRoomProps> = ({
             borderRadius: '12px',
             padding: '14px',
             overflowY: 'auto',
+            minHeight: 0,
+            height: '100%',
           }}
         >
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
@@ -1246,6 +1288,9 @@ export const ConsultRoom: React.FC<ConsultRoomProps> = ({
               borderRadius: '10px',
               border: '1px solid #1e293b',
               height: '240px',
+              maxHeight: '240px',
+              width: '100%',
+              flexShrink: 0,
               overflow: 'hidden',
               display: 'flex',
               alignItems: 'center',
@@ -1260,7 +1305,7 @@ export const ConsultRoom: React.FC<ConsultRoomProps> = ({
               style={{
                 width: '100%',
                 height: '100%',
-                objectFit: 'cover',
+                objectFit: cameraFit,
                 display: currentTier <= 2 ? 'block' : 'none',
                 filter: currentTier === 2 ? 'blur(1.5px) contrast(0.95)' : 'none',
               }}
@@ -1345,7 +1390,7 @@ export const ConsultRoom: React.FC<ConsultRoomProps> = ({
           </div>
 
           {/* Media Toggles & Request Still Snapshot Button */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'auto 1fr', gap: '8px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'auto auto 1fr', gap: '8px' }}>
             <button
               type="button"
               onClick={toggleMic}
@@ -1365,6 +1410,27 @@ export const ConsultRoom: React.FC<ConsultRoomProps> = ({
             >
               {isMicMuted ? <MicOff size={14} /> : <Mic size={14} />}
               <span>{isMicMuted ? 'Muted' : 'Mic On'}</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setCameraFit(cameraFit === 'contain' ? 'cover' : 'contain')}
+              style={{
+                padding: '10px 10px',
+                borderRadius: '8px',
+                backgroundColor: '#1e293b',
+                color: '#38bdf8',
+                border: '1px solid #334155',
+                cursor: 'pointer',
+                fontSize: '11px',
+                fontWeight: 700,
+                display: 'flex',
+                alignItems: 'center',
+                gap: '4px',
+              }}
+              title="Toggle framing: contain full video or cover"
+            >
+              <span>{cameraFit === 'contain' ? '🔍 Zoom Out' : '🔍 Fill'}</span>
             </button>
 
             <button
@@ -1476,6 +1542,8 @@ export const ConsultRoom: React.FC<ConsultRoomProps> = ({
             borderRadius: '12px',
             padding: '14px',
             overflowY: 'auto',
+            minHeight: 0,
+            height: '100%',
           }}
         >
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
@@ -1718,6 +1786,8 @@ export const ConsultRoom: React.FC<ConsultRoomProps> = ({
             borderRadius: '12px',
             padding: '14px',
             overflowY: 'auto',
+            minHeight: 0,
+            height: '100%',
           }}
         >
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
@@ -2171,6 +2241,8 @@ export const ConsultRoom: React.FC<ConsultRoomProps> = ({
           flex: '1 1 auto',
           padding: '16px',
           overflow: 'hidden',
+          minHeight: 0,
+          height: '100%',
           backgroundColor: '#070a13',
         }}
       >
@@ -2178,7 +2250,7 @@ export const ConsultRoom: React.FC<ConsultRoomProps> = ({
         {renderSpokeStation(true)}
 
         {/* Right Side: Doctor Workstation Cockpit */}
-        <div style={{ height: '100%', overflowY: 'auto' }}>
+        <div style={{ height: '100%', minHeight: 0, overflowY: 'auto' }}>
           {renderDoctorCockpit()}
         </div>
       </div>
@@ -2190,7 +2262,9 @@ export const ConsultRoom: React.FC<ConsultRoomProps> = ({
       style={{
         display: 'flex',
         flexDirection: 'column',
-        minHeight: '100vh',
+        height: '100%',
+        maxHeight: 'calc(100vh - 65px)',
+        overflow: 'hidden',
         backgroundColor: '#070a13',
         color: '#f8fafc',
         fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
@@ -2421,10 +2495,12 @@ export const ConsultRoom: React.FC<ConsultRoomProps> = ({
         </div>
       )}
 
-      {/* 3. Main Perspective View */}
-      {perspective === 'spoke' && renderSpokeStation(false)}
-      {perspective === 'doctor' && renderDoctorCockpit()}
-      {perspective === 'split' && renderSplitScreen()}
+      {/* 3. Main Perspective View (Bounded to viewport with minHeight 0) */}
+      <div style={{ flex: '1 1 auto', minHeight: 0, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+        {perspective === 'spoke' && renderSpokeStation(false)}
+        {perspective === 'doctor' && renderDoctorCockpit()}
+        {perspective === 'split' && renderSplitScreen()}
+      </div>
 
       {/* 4. Photo Lightbox Modal */}
       {selectedPhotoModal && (
