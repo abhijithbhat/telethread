@@ -17,10 +17,12 @@ try:
     from .database import init_db
     from .routes_cases import router as cases_router
     from .signalling import router as signalling_router
+    from .routes_agent import router as agent_router
 except ImportError:
     from database import init_db
     from routes_cases import router as cases_router
     from signalling import router as signalling_router
+    from routes_agent import router as agent_router
 
 
 @asynccontextmanager
@@ -49,6 +51,7 @@ app.add_middleware(
 # Mount REST API routes and WebSocket signalling routes
 app.include_router(cases_router)
 app.include_router(signalling_router)
+app.include_router(agent_router)
 
 
 @app.get("/health")
@@ -64,5 +67,6 @@ def root_redirect():
         "service": "TeleThread Cloud Core",
         "health": "/health",
         "api_cases": "/api/cases",
+        "api_agent": "/api/agent",
         "docs": "/docs",
     }
