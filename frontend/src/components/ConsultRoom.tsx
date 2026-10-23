@@ -15,9 +15,19 @@ import {
   User,
   Activity,
   Layers,
+  Bot,
+  Loader2,
 } from 'lucide-react';
 import { NetworkSimulatorHUD } from './NetworkSimulatorHUD';
 import { useAdaptiveChannel } from '../hooks/useAdaptiveChannel';
+import {
+  speakText,
+  startAudioRecording,
+  stopAudioRecording,
+  transcribeAudio,
+  runBrowserSpeechRecognition,
+  executeAutonomousAction,
+} from '../utils/voiceService';
 
 export interface CaseTimelineItem {
   timestamp: string;
@@ -256,6 +266,119 @@ export const ConsultRoom: React.FC<ConsultRoomProps> = ({
       mediaRecorderRef.current.stop();
     }
     setIsRecordingVoice(false);
+  };
+
+  // Live AI Co-Consultant & Sarvam Voice Translator State
+  const [agentLang, setAgentLang] = useState<'kn-IN' | 'en-IN'>('kn-IN');
+  const [isRecordingConsultVoice, setIsRecordingConsultVoice] = useState(false);
+  const [isExecutingAgentAction, setIsExecutingAgentAction] = useState(false);
+  const [agentStatusNote, setAgentStatusNote] = useState<string | null>(null);
+
+  const handleConsultVoiceSTT = async () => {
+    if (isRecordingConsultVoice) {
+      setIsRecordingConsultVoice(false);
+      setAgentStatusNote('Transcribing voice via Sarvam AI...');
+      try {
+        const audioBlob = await stopAudioRecording();
+        const res = await transcribeAudio(apiBaseUrl, audioBlob, agentLang);
+        let transcript = res.transcript;
+        if (!transcript) {
+          transcript = await runBrowserSpeechRecognition(agentLang, 3000);
+        }
+        if (transcript) {
+          const timestamp = new Date().toLocaleTimeString();
+          const newEvent = {
+            timestamp,
+            type: 'VOICE_TRANSLATION',
+            role: role === 'spoke' ? 'Patient / Spoke' : 'Specialist Doctor',
+            content: `[${agentLang === 'kn-IN' ? 'ಕನ್ನಡ' : 'English'}] "${transcript}"`,
+            transcript,
+            tier: currentTier,
+          };
+          handleTimelineEvent(newEvent);
+          setAgentStatusNote(`Transcribed: "${transcript.slice(0, 40)}..."`);
+          setTimeout(() => setAgentStatusNote(null), 4000);
+        } else {
+          setAgentStatusNote('No speech detected');
+          setTimeout(() => setAgentStatusNote(null), 3000);
+        }
+      } catch (err: any) {
+        setAgentStatusNote(`Voice error: ${err.message}`);
+        setTimeout(() => setAgentStatusNote(null), 4000);
+      }
+    } else {
+      try {
+        await startAudioRecording();
+        setIsRecordingConsultVoice(true);
+        setAgentStatusNote(`Listening in ${agentLang === 'kn-IN' ? 'Kannada' : 'English'}... Click to finish`);
+      } catch (err: any) {
+        setAgentStatusNote('Mic error, running browser recognition...');
+        const text = await runBrowserSpeechRecognition(agentLang, 5000);
+        if (text) {
+          const timestamp = new Date().toLocaleTimeString();
+          handleTimelineEvent({
+            timestamp,
+            type: 'VOICE_TRANSLATION',
+            content: `"${text}"`,
+            transcript: text,
+            tier: currentTier,
+          });
+        }
+      }
+    }
+  };
+
+  const handleExecuteConsultAction = async () => {
+    setIsExecutingAgentAction(true);
+    setAgentStatusNote('AI Co-Consultant capturing still & synthesizing differential...');
+
+    try {
+      await handleSnapPhoto();
+
+      const actionRes = await executeAutonomousAction(
+        apiBaseUrl,
+        `Evaluate ongoing consultation on ${caseData.id}. Review acute complaints and draft emergency medication orders.`,
+        agentLang,
+        'consult',
+        caseData.id
+      );
+
+      const timestamp = new Date().toLocaleTimeString();
+      const newEvent = {
+        timestamp,
+        type: 'AI_CO_CONSULTANT',
+        content: actionRes.clinical_note || actionRes.spoken_reply,
+        recommendation: actionRes.recommendation,
+        draft_rx: actionRes.draft_rx,
+        tier: currentTier,
+      };
+      handleTimelineEvent(newEvent);
+
+      if (actionRes.draft_rx && actionRes.draft_rx.length > 0) {
+        onCaseUpdate?.({
+          ...caseData,
+          prescription: {
+            diagnosis: 'Acute Coronary & Envenomation Protocol (AI Co-Consultant)',
+            medications: actionRes.draft_rx,
+            advice: actionRes.recommendation || '',
+            doctor_name: 'Dr. K. Srinivas, MD (Co-Pilot: Autonomous Agent)',
+            doctor_reg: 'KMC-78452',
+          },
+        });
+      }
+
+      setAgentStatusNote('Co-Consultant orders appended to timeline & e-Rx drafted!');
+      setTimeout(() => setAgentStatusNote(null), 4000);
+
+      if (actionRes.spoken_reply) {
+        speakText(apiBaseUrl, actionRes.spoken_reply, agentLang, actionRes.audio_base64);
+      }
+    } catch (err: any) {
+      setAgentStatusNote(`AI Co-Consultant error: ${err.message}`);
+      setTimeout(() => setAgentStatusNote(null), 4000);
+    } finally {
+      setIsExecutingAgentAction(false);
+    }
   };
 
   // Offline Vitals Quick Queue (Tier 4 demonstration)
@@ -1292,7 +1415,7 @@ export const ConsultRoom: React.FC<ConsultRoomProps> = ({
               </div>
             </div>
 
-            {/* AI Brief */}
+            {/* AI Brief with Sarvam TTS Read Aloud */}
             {caseData.ai_clinical_brief && (
               <div
                 style={{
@@ -1304,11 +1427,123 @@ export const ConsultRoom: React.FC<ConsultRoomProps> = ({
                   fontSize: '11px',
                   color: '#bfdbfe',
                   display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
                   gap: '6px',
                 }}
               >
-                <Sparkles size={14} color="#60a5fa" style={{ flexShrink: 0, marginTop: '2px' }} />
-                <span>{caseData.ai_clinical_brief}</span>
+                <div style={{ display: 'flex', gap: '6px', alignItems: 'flex-start' }}>
+                  <Sparkles size={14} color="#60a5fa" style={{ flexShrink: 0, marginTop: '2px' }} />
+                  <span>{caseData.ai_clinical_brief}</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => speakText(apiBaseUrl, caseData.ai_clinical_brief!, agentLang)}
+                  title="Listen to Pre-Brief via Sarvam TTS"
+                  style={{
+                    background: 'none',
+                    border: 'none',
+                    color: '#60a5fa',
+                    cursor: 'pointer',
+                    padding: '2px 4px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    flexShrink: 0,
+                  }}
+                >
+                  <Volume2 size={15} />
+                </button>
+              </div>
+            )}
+          </div>
+
+          {/* 🎙️ Live AI Co-Consultant & Sarvam Voice Translator Panel */}
+          <div
+            style={{
+              padding: '12px 16px',
+              backgroundColor: '#070a13',
+              borderBottom: '1px solid #1e293b',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '10px',
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <Bot size={15} color="#38bdf8" />
+                <span style={{ fontSize: '12px', fontWeight: 800, color: '#f1f5f9' }}>
+                  AI Co-Consultant & Sarvam Voice
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setAgentLang(agentLang === 'kn-IN' ? 'en-IN' : 'kn-IN')}
+                style={{
+                  padding: '3px 8px',
+                  borderRadius: '4px',
+                  backgroundColor: '#1e293b',
+                  border: '1px solid #334155',
+                  color: '#38bdf8',
+                  fontSize: '10px',
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                }}
+              >
+                {agentLang === 'kn-IN' ? 'ಕನ್ನಡ (kn-IN)' : 'English (en-IN)'}
+              </button>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+              <button
+                type="button"
+                onClick={handleConsultVoiceSTT}
+                style={{
+                  padding: '8px 10px',
+                  borderRadius: '6px',
+                  backgroundColor: isRecordingConsultVoice ? '#dc2626' : '#1e3a8a',
+                  color: '#ffffff',
+                  border: `1px solid ${isRecordingConsultVoice ? '#ef4444' : '#3b82f6'}`,
+                  cursor: 'pointer',
+                  fontSize: '11px',
+                  fontWeight: 700,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '5px',
+                  boxShadow: isRecordingConsultVoice ? '0 0 15px rgba(239, 68, 68, 0.5)' : 'none',
+                }}
+              >
+                {isRecordingConsultVoice ? <MicOff size={13} /> : <Mic size={13} />}
+                <span>{isRecordingConsultVoice ? 'Stop Speaking' : 'Speak (STT)'}</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={handleExecuteConsultAction}
+                disabled={isExecutingAgentAction}
+                style={{
+                  padding: '8px 10px',
+                  borderRadius: '6px',
+                  backgroundColor: isExecutingAgentAction ? '#334155' : '#047857',
+                  color: '#ffffff',
+                  border: `1px solid ${isExecutingAgentAction ? '#475569' : '#059669'}`,
+                  cursor: isExecutingAgentAction ? 'not-allowed' : 'pointer',
+                  fontSize: '11px',
+                  fontWeight: 700,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '5px',
+                }}
+              >
+                {isExecutingAgentAction ? <Loader2 size={13} className="animate-spin" /> : <Sparkles size={13} />}
+                <span>Ask AI Co-Pilot</span>
+              </button>
+            </div>
+
+            {agentStatusNote && (
+              <div style={{ fontSize: '11px', color: '#38bdf8', fontStyle: 'italic' }}>
+                ℹ️ {agentStatusNote}
               </div>
             )}
           </div>
@@ -1343,9 +1578,10 @@ export const ConsultRoom: React.FC<ConsultRoomProps> = ({
           >
             {timeline.map((event, idx) => {
               const isPhoto = event.type === 'PHOTO';
-              const isVoice = event.type === 'VOICE_NOTE';
+              const isVoice = event.type === 'VOICE_NOTE' || event.type === 'VOICE_TRANSLATION';
               const isTier = event.type === 'TIER_CHANGE';
               const isSynced = event.type === 'OUTBOX_SYNCED';
+              const isAgent = event.type === 'AI_CO_CONSULTANT';
 
               return (
                 <div
@@ -1356,8 +1592,8 @@ export const ConsultRoom: React.FC<ConsultRoomProps> = ({
                     gap: '4px',
                     padding: '10px 12px',
                     borderRadius: '8px',
-                    backgroundColor: '#0f172a',
-                    border: '1px solid #1e293b',
+                    backgroundColor: isAgent ? '#022c22' : '#0f172a',
+                    border: `1px solid ${isAgent ? '#059669' : '#1e293b'}`,
                   }}
                 >
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
@@ -1366,7 +1602,8 @@ export const ConsultRoom: React.FC<ConsultRoomProps> = ({
                       {isVoice && <Mic size={13} color="#a855f7" />}
                       {isTier && <Layers size={13} color="#f59e0b" />}
                       {isSynced && <CheckCircle2 size={13} color="#10b981" />}
-                      {!isPhoto && !isVoice && !isTier && !isSynced && <Activity size={13} color="#94a3b8" />}
+                      {isAgent && <Sparkles size={13} color="#34d399" />}
+                      {!isPhoto && !isVoice && !isTier && !isSynced && !isAgent && <Activity size={13} color="#94a3b8" />}
 
                       <span
                         style={{
@@ -1378,7 +1615,7 @@ export const ConsultRoom: React.FC<ConsultRoomProps> = ({
                             ? '#c084fc'
                             : isTier
                             ? '#fbbf24'
-                            : isSynced
+                            : isSynced || isAgent
                             ? '#34d399'
                             : '#cbd5e1',
                         }}
@@ -1387,7 +1624,31 @@ export const ConsultRoom: React.FC<ConsultRoomProps> = ({
                       </span>
                     </div>
 
-                    <span style={{ fontSize: '10px', color: '#64748b' }}>{event.timestamp}</span>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          speakText(
+                            apiBaseUrl,
+                            event.content || event.transcript || event.note || '',
+                            agentLang
+                          )
+                        }
+                        title="Read Aloud via Sarvam TTS"
+                        style={{
+                          background: 'none',
+                          border: 'none',
+                          color: '#94a3b8',
+                          cursor: 'pointer',
+                          padding: '0 2px',
+                          display: 'flex',
+                          alignItems: 'center',
+                        }}
+                      >
+                        <Volume2 size={13} />
+                      </button>
+                      <span style={{ fontSize: '10px', color: '#64748b' }}>{event.timestamp}</span>
+                    </div>
                   </div>
 
                   {event.content && (

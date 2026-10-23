@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   Stethoscope,
   Activity,
@@ -6,11 +6,17 @@ import {
   BarChart3,
   Languages,
   ArrowRightLeft,
+  Navigation,
+  Bot,
+  Key,
 } from 'lucide-react';
 import { SpokeTriageView } from './components/SpokeTriageView';
 import { HubQueueView } from './components/HubQueueView';
 import { ConsultRoom, type CaseData } from './components/ConsultRoom';
 import { BenchmarksView } from './components/BenchmarksView';
+import { TalukaUmapView } from './components/TalukaUmapView';
+import { AutonomousAgentModal } from './components/AutonomousAgentModal';
+import { fetchSarvamKeyStatus, type SarvamKeyStatus } from './utils/voiceService';
 import type { Language } from './i18n/translations';
 
 // Baseline demo case conforming to SHARED_CONTRACT.md
@@ -44,13 +50,22 @@ const DEFAULT_DEMO_CASE: CaseData = {
   prescription: null,
 };
 
-type ViewMode = 'spoke' | 'hub' | 'consult' | 'benchmarks';
+type ViewMode = 'spoke' | 'umap' | 'consult' | 'hub' | 'benchmarks';
 
 export function App() {
   const [activeView, setActiveView] = useState<ViewMode>('spoke');
   const [activeRole, setActiveRole] = useState<'spoke' | 'hub'>('spoke');
   const [lang, setLang] = useState<Language>('en');
   const [activeCase, setActiveCase] = useState<CaseData>(DEFAULT_DEMO_CASE);
+
+  // Global Autonomous Agent Modal State
+  const [isAgentModalOpen, setIsAgentModalOpen] = useState(false);
+  const [keyStatus, setKeyStatus] = useState<SarvamKeyStatus>({
+    total_keys: 0,
+    active_key_index: 0,
+    has_keys: false,
+    masked_active_key: null,
+  });
 
   // Resolve base API URL (Vite environment variable or default)
   let rawApi = (import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000').trim();
@@ -59,6 +74,11 @@ export function App() {
   }
   const apiBaseUrl = rawApi.replace(/\/+$/, '');
   const wsBaseUrl = apiBaseUrl.replace(/^http/, 'ws');
+
+  // Load key pool status on mount
+  useEffect(() => {
+    fetchSarvamKeyStatus(apiBaseUrl).then(setKeyStatus).catch(() => {});
+  }, [apiBaseUrl]);
 
   // Triggered when Spoke health worker clicks "Enter Priority Live Consult"
   const handleStartConsultFromSpoke = (caseData: any) => {
@@ -81,6 +101,27 @@ export function App() {
       vitals: caseData.vitals || DEFAULT_DEMO_CASE.vitals,
     });
     setActiveRole('hub');
+    setActiveView('consult');
+  };
+
+  // Triggered when Taluka uMap clicks "Simulate Call from This PHC"
+  const handleSimulateCallFromUmap = (caseId: string) => {
+    if (caseId) {
+      console.log(`[TeleThread] Simulating call from node associated with case: ${caseId}`);
+    }
+    setActiveRole('spoke');
+    setActiveView('consult');
+  };
+
+  // Triggered when Autonomous Voice Agent creates a case
+  const handleCaseCreatedByAgent = (createdCase: any) => {
+    setActiveCase({
+      ...DEFAULT_DEMO_CASE,
+      ...createdCase,
+      timeline: createdCase.timeline || DEFAULT_DEMO_CASE.timeline,
+      vitals: createdCase.vitals || DEFAULT_DEMO_CASE.vitals,
+    });
+    setActiveRole('spoke');
     setActiveView('consult');
   };
 
@@ -149,7 +190,7 @@ export function App() {
                   border: '1px solid #2563eb',
                 }}
               >
-                Sahyadri DevHost 2026
+                DevHost 2026
               </span>
             </div>
             <div style={{ fontSize: '11px', color: '#94a3b8' }}>
@@ -158,7 +199,7 @@ export function App() {
           </div>
         </div>
 
-        {/* View Switcher Pills */}
+        {/* 5 Crisp Judge-Friendly Navigation Pills */}
         <nav
           style={{
             display: 'flex',
@@ -168,13 +209,15 @@ export function App() {
             borderRadius: '10px',
             border: '1px solid #1e293b',
             gap: '4px',
+            flexWrap: 'wrap',
           }}
         >
+          {/* Tab 1: Spoke PHC */}
           <button
             type="button"
             onClick={() => setActiveView('spoke')}
             style={{
-              padding: '6px 14px',
+              padding: '6px 12px',
               borderRadius: '8px',
               fontSize: '12px',
               fontWeight: activeView === 'spoke' ? 700 : 500,
@@ -189,19 +232,20 @@ export function App() {
             }}
           >
             <Stethoscope size={14} />
-            1. Spoke (PHC Health Worker)
+            <span>1. Spoke PHC (Voice & Triage)</span>
           </button>
 
+          {/* Tab 2: Coastal & Hill uMap */}
           <button
             type="button"
-            onClick={() => setActiveView('hub')}
+            onClick={() => setActiveView('umap')}
             style={{
-              padding: '6px 14px',
+              padding: '6px 12px',
               borderRadius: '8px',
               fontSize: '12px',
-              fontWeight: activeView === 'hub' ? 700 : 500,
-              backgroundColor: activeView === 'hub' ? '#2563eb' : 'transparent',
-              color: activeView === 'hub' ? '#ffffff' : '#94a3b8',
+              fontWeight: activeView === 'umap' ? 700 : 500,
+              backgroundColor: activeView === 'umap' ? '#2563eb' : 'transparent',
+              color: activeView === 'umap' ? '#ffffff' : '#94a3b8',
               border: 'none',
               cursor: 'pointer',
               display: 'flex',
@@ -210,15 +254,16 @@ export function App() {
               transition: 'all 0.15s ease',
             }}
           >
-            <Activity size={14} />
-            2. Hub (Specialist Doctor)
+            <Navigation size={14} />
+            <span>2. Coastal & Hill uMap</span>
           </button>
 
+          {/* Tab 3: Live Adaptive Consult */}
           <button
             type="button"
             onClick={() => setActiveView('consult')}
             style={{
-              padding: '6px 14px',
+              padding: '6px 12px',
               borderRadius: '8px',
               fontSize: '12px',
               fontWeight: activeView === 'consult' ? 700 : 500,
@@ -233,14 +278,38 @@ export function App() {
             }}
           >
             <Layers size={14} />
-            3. Live Adaptive Consult
+            <span>3. Live Consult (Tier 1–4)</span>
           </button>
 
+          {/* Tab 4: Specialist Hub */}
+          <button
+            type="button"
+            onClick={() => setActiveView('hub')}
+            style={{
+              padding: '6px 12px',
+              borderRadius: '8px',
+              fontSize: '12px',
+              fontWeight: activeView === 'hub' ? 700 : 500,
+              backgroundColor: activeView === 'hub' ? '#2563eb' : 'transparent',
+              color: activeView === 'hub' ? '#ffffff' : '#94a3b8',
+              border: 'none',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              transition: 'all 0.15s ease',
+            }}
+          >
+            <Activity size={14} />
+            <span>4. Specialist Hub</span>
+          </button>
+
+          {/* Tab 5: Measured Benchmarks */}
           <button
             type="button"
             onClick={() => setActiveView('benchmarks')}
             style={{
-              padding: '6px 14px',
+              padding: '6px 12px',
               borderRadius: '8px',
               fontSize: '12px',
               fontWeight: activeView === 'benchmarks' ? 700 : 500,
@@ -255,12 +324,62 @@ export function App() {
             }}
           >
             <BarChart3 size={14} />
-            4. Measured Benchmarks
+            <span>5. Measured Benchmarks</span>
           </button>
         </nav>
 
-        {/* Right Actions: Role Toggle & Language Switcher */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+        {/* Right Actions: AI Agent Bar, Sarvam Key Status, Role & Lang */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+          {/* Autonomous Voice AI Launcher */}
+          <button
+            type="button"
+            onClick={() => setIsAgentModalOpen(true)}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              padding: '6px 12px',
+              borderRadius: '8px',
+              background: 'linear-gradient(135deg, #1e3a8a, #0369a1)',
+              color: '#ffffff',
+              border: '1px solid #38bdf8',
+              cursor: 'pointer',
+              fontSize: '12px',
+              fontWeight: 700,
+              boxShadow: '0 0 12px rgba(56, 189, 248, 0.4)',
+            }}
+            title="Launch Voice AI Agent for Zero-Touch Triage or Consultation Co-Pilot"
+          >
+            <Bot size={15} color="#38bdf8" />
+            <span>🤖 AI Voice Agent</span>
+          </button>
+
+          {/* Sarvam AI Keys Status Badge */}
+          <button
+            type="button"
+            onClick={() => setIsAgentModalOpen(true)}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '5px',
+              padding: '6px 10px',
+              borderRadius: '8px',
+              backgroundColor: keyStatus.has_keys ? '#064e3b' : '#334155',
+              color: keyStatus.has_keys ? '#6ee7b7' : '#cbd5e1',
+              border: `1px solid ${keyStatus.has_keys ? '#059669' : '#475569'}`,
+              cursor: 'pointer',
+              fontSize: '11px',
+              fontWeight: 700,
+            }}
+            title="View or add Sarvam API keys to fallback rotator"
+          >
+            <Key size={13} color={keyStatus.has_keys ? '#34d399' : '#94a3b8'} />
+            <span>
+              {keyStatus.has_keys ? `Sarvam: ${keyStatus.total_keys} Active` : 'Sarvam Keys'}
+            </span>
+          </button>
+
+          {/* Role Toggle (in Consult) */}
           {activeView === 'consult' && (
             <button
               type="button"
@@ -269,19 +388,19 @@ export function App() {
                 display: 'flex',
                 alignItems: 'center',
                 gap: '6px',
-                padding: '6px 12px',
+                padding: '6px 10px',
                 borderRadius: '8px',
                 backgroundColor: activeRole === 'spoke' ? '#1e1b4b' : '#142d42',
                 color: activeRole === 'spoke' ? '#a5b4fc' : '#7dd3fc',
                 border: `1px solid ${activeRole === 'spoke' ? '#4338ca' : '#0369a1'}`,
                 cursor: 'pointer',
-                fontSize: '12px',
+                fontSize: '11px',
                 fontWeight: 600,
               }}
               title="Toggle preview role between Spoke PHC and Hub Specialist"
             >
-              <ArrowRightLeft size={14} />
-              <span>Role: {activeRole === 'spoke' ? 'Spoke (PHC)' : 'Hub (Specialist)'}</span>
+              <ArrowRightLeft size={13} />
+              <span>{activeRole === 'spoke' ? 'Role: Spoke' : 'Role: Hub'}</span>
             </button>
           )}
 
@@ -292,20 +411,20 @@ export function App() {
             style={{
               display: 'flex',
               alignItems: 'center',
-              gap: '6px',
-              padding: '6px 12px',
+              gap: '5px',
+              padding: '6px 10px',
               borderRadius: '8px',
               backgroundColor: '#1e293b',
               color: '#f8fafc',
               border: '1px solid #334155',
               cursor: 'pointer',
-              fontSize: '12px',
+              fontSize: '11px',
               fontWeight: 600,
             }}
             title="Toggle English / Kannada Interface"
           >
-            <Languages size={14} color="#38bdf8" />
-            <span>{lang === 'en' ? 'ಕನ್ನಡ (KN)' : 'English (EN)'}</span>
+            <Languages size={13} color="#38bdf8" />
+            <span>{lang === 'en' ? 'ಕನ್ನಡ' : 'EN'}</span>
           </button>
         </div>
       </header>
@@ -317,14 +436,15 @@ export function App() {
             apiBaseUrl={apiBaseUrl}
             lang={lang}
             onStartConsult={handleStartConsultFromSpoke}
+            onOpenAgentModal={() => setIsAgentModalOpen(true)}
+            onOpenUmap={() => setActiveView('umap')}
           />
         )}
 
-        {activeView === 'hub' && (
-          <HubQueueView
-            apiBaseUrl={apiBaseUrl}
+        {activeView === 'umap' && (
+          <TalukaUmapView
             lang={lang}
-            onJoinConsult={handleJoinConsultFromHub}
+            onSimulateCall={handleSimulateCallFromUmap}
           />
         )}
 
@@ -339,8 +459,26 @@ export function App() {
           />
         )}
 
+        {activeView === 'hub' && (
+          <HubQueueView
+            apiBaseUrl={apiBaseUrl}
+            lang={lang}
+            onJoinConsult={handleJoinConsultFromHub}
+          />
+        )}
+
         {activeView === 'benchmarks' && <BenchmarksView lang={lang} />}
       </main>
+
+      {/* 3. Global Autonomous AI Voice Agent Modal */}
+      <AutonomousAgentModal
+        isOpen={isAgentModalOpen}
+        onClose={() => setIsAgentModalOpen(false)}
+        apiBaseUrl={apiBaseUrl}
+        lang={lang}
+        currentCaseId={activeCase.id}
+        onCaseCreated={handleCaseCreatedByAgent}
+      />
     </div>
   );
 }

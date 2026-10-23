@@ -18,8 +18,10 @@ import {
   AlertOctagon,
   ChevronRight,
   ShieldCheck,
+  Volume2,
 } from 'lucide-react';
 import { t } from '../i18n/translations';
+import { speakText } from '../utils/voiceService';
 
 export interface HubQueueViewProps {
   apiBaseUrl: string;
@@ -911,16 +913,61 @@ export const HubQueueView: React.FC<HubQueueViewProps> = ({
                     padding: '12px 16px',
                   }}
                 >
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '4px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '4px', flexWrap: 'wrap', gap: '6px' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                       <Sparkles size={15} color="#7c3aed" />
                       <span style={{ fontSize: '12px', fontWeight: 700, color: '#6d28d9', letterSpacing: '0.3px', textTransform: 'uppercase' }}>
                         {t('aiClinicalBrief', lang)}
                       </span>
                     </div>
-                    <span style={{ fontSize: '11px', fontWeight: 600, color: '#7c3aed', opacity: 0.85 }}>
-                      {t('aiBriefTagline', lang)}
-                    </span>
+
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <span style={{ fontSize: '11px', fontWeight: 600, color: '#7c3aed', opacity: 0.85, marginRight: '4px' }}>
+                        {t('aiBriefTagline', lang)}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => speakText(apiBaseUrl, c.ai_clinical_brief || '', 'kn-IN')}
+                        title="Listen to Clinical Pre-Brief in Kannada via Sarvam TTS"
+                        style={{
+                          padding: '2px 8px',
+                          borderRadius: '4px',
+                          backgroundColor: '#f3e8ff',
+                          color: '#6d28d9',
+                          border: '1px solid #d8b4fe',
+                          cursor: 'pointer',
+                          fontSize: '11px',
+                          fontWeight: 700,
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '3px',
+                        }}
+                      >
+                        <Volume2 size={12} />
+                        <span>ಕನ್ನಡ</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => speakText(apiBaseUrl, c.ai_clinical_brief || '', 'en-IN')}
+                        title="Listen to Clinical Pre-Brief in English via Sarvam TTS"
+                        style={{
+                          padding: '2px 8px',
+                          borderRadius: '4px',
+                          backgroundColor: '#f3e8ff',
+                          color: '#6d28d9',
+                          border: '1px solid #d8b4fe',
+                          cursor: 'pointer',
+                          fontSize: '11px',
+                          fontWeight: 700,
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '3px',
+                        }}
+                      >
+                        <Volume2 size={12} />
+                        <span>English</span>
+                      </button>
+                    </div>
                   </div>
                   <p style={{ margin: 0, fontSize: '13px', lineHeight: 1.5, color: '#3b0764' }}>
                     {c.ai_clinical_brief || 'Patient registered from Spoke PHC. Clinical vitals and timeline streaming.'}

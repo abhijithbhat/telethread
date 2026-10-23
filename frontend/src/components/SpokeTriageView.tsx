@@ -12,6 +12,10 @@ import {
   ChevronRight,
   ArrowRight,
   AlertOctagon,
+  Bot,
+  Mic,
+  Navigation,
+  MapPin,
 } from 'lucide-react';
 import { t } from '../i18n/translations';
 
@@ -19,12 +23,16 @@ export interface SpokeTriageViewProps {
   apiBaseUrl: string;
   lang: 'en' | 'kn';
   onStartConsult: (caseData: any) => void;
+  onOpenAgentModal?: () => void;
+  onOpenUmap?: () => void;
 }
 
 export const SpokeTriageView: React.FC<SpokeTriageViewProps> = ({
   apiBaseUrl,
   lang,
   onStartConsult,
+  onOpenAgentModal,
+  onOpenUmap,
 }) => {
   // Form state
   const [patientName, setPatientName] = useState('');
@@ -294,6 +302,145 @@ export const SpokeTriageView: React.FC<SpokeTriageViewProps> = ({
         textAlign: 'left',
       }}
     >
+      {/* 🤖 HERO BANNER: Autonomous Voice Triage Agent */}
+      <div
+        style={{
+          background: 'linear-gradient(135deg, #1e1b4b 0%, #0f172a 60%, #172554 100%)',
+          borderRadius: '16px',
+          padding: '20px 24px',
+          color: '#ffffff',
+          boxShadow: '0 10px 30px -5px rgba(37, 99, 235, 0.3)',
+          border: '1px solid #3b82f6',
+          marginBottom: '20px',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '14px',
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '12px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <div
+              style={{
+                width: '42px',
+                height: '42px',
+                borderRadius: '12px',
+                background: 'linear-gradient(135deg, #2563eb, #06b6d4)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                color: '#ffffff',
+                boxShadow: '0 0 18px rgba(37, 99, 235, 0.6)',
+              }}
+            >
+              <Bot size={24} />
+            </div>
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <h3 style={{ margin: 0, fontSize: '17px', fontWeight: 800, color: '#ffffff' }}>
+                  {lang === 'kn'
+                    ? '🤖 ಸ್ವಾಯತ್ತ ಧ್ವನಿ ಟ್ರಯೇಜ್ ಏಜೆಂಟ್ (ತುರ್ತು ರೋಗಿಗಳಿಗೆ ನೇರ ಪ್ರವೇಶ)'
+                    : '🤖 Autonomous Voice Triage Agent (Zero-Touch for Critical Patients)'}
+                </h3>
+                <span
+                  style={{
+                    fontSize: '10px',
+                    fontWeight: 700,
+                    padding: '2px 8px',
+                    borderRadius: '12px',
+                    backgroundColor: '#1e3a8a',
+                    color: '#93c5fd',
+                    border: '1px solid #2563eb',
+                  }}
+                >
+                  Sarvam AI + Gemini
+                </span>
+              </div>
+              <p style={{ margin: '3px 0 0 0', fontSize: '12px', color: '#cbd5e1' }}>
+                {lang === 'kn'
+                  ? 'ತೀವ್ರ ಎದೆ ನೋವು ಅಥವಾ ಹಾವು ಕಡಿತದಂತಹ ತುರ್ತು ಸ್ಥಿತಿಗಳಲ್ಲಿ, ಕೇವಲ ಧ್ವನಿಯಲ್ಲಿ ಮಾತನಾಡಿ. ಏಜೆಂಟ್ ತಾನಾಗಿಯೇ ವಿವರಗಳನ್ನು ಭರ್ತಿ ಮಾಡಿ ತಜ್ಞ ವೈದ್ಯರಿಗೆ ರವಾನಿಸುತ್ತದೆ.'
+                  : 'Speak in Kannada (ಕನ್ನಡ) or English: the agent auto-fills demographics, detects Red Flags, and immediately escalates to the District Specialist Hub queue.'}
+              </p>
+            </div>
+          </div>
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <button
+              type="button"
+              onClick={onOpenAgentModal}
+              style={{
+                padding: '10px 18px',
+                borderRadius: '8px',
+                backgroundColor: '#2563eb',
+                color: '#ffffff',
+                border: 'none',
+                cursor: 'pointer',
+                fontSize: '13px',
+                fontWeight: 700,
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                boxShadow: '0 4px 15px rgba(37, 99, 235, 0.4)',
+              }}
+            >
+              <Mic size={16} />
+              <span>{lang === 'kn' ? 'ಧ್ವನಿ ಏಜೆಂಟ್ ಪ್ರಾರಂಭಿಸಿ' : 'Launch Voice Agent'}</span>
+            </button>
+
+            {onOpenUmap && (
+              <button
+                type="button"
+                onClick={onOpenUmap}
+                style={{
+                  padding: '10px 16px',
+                  borderRadius: '8px',
+                  backgroundColor: '#1e293b',
+                  color: '#93c5fd',
+                  border: '1px solid #3b82f6',
+                  cursor: 'pointer',
+                  fontSize: '13px',
+                  fontWeight: 600,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                }}
+              >
+                <Navigation size={15} />
+                <span>{lang === 'kn' ? 'ತಾಲೂಕು uMap ವೀಕ್ಷಿಸಿ' : 'View Taluka uMap'}</span>
+              </button>
+            )}
+          </div>
+        </div>
+
+        {/* Mini Taluka Route Indicator */}
+        <div
+          style={{
+            padding: '10px 14px',
+            borderRadius: '8px',
+            backgroundColor: 'rgba(15, 23, 42, 0.7)',
+            border: '1px solid #334155',
+            display: 'flex',
+            flexWrap: 'wrap',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: '8px',
+            fontSize: '11px',
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <MapPin size={13} color="#f59e0b" />
+            <span style={{ color: '#94a3b8' }}>Ghat Emergency Transit Corridor:</span>
+            <strong style={{ color: '#ffffff' }}>Sullia PHC (Tier 3)</strong>
+            <span style={{ color: '#64748b' }}>➔ 32 km (45m) ➔</span>
+            <strong style={{ color: '#34d399' }}>Puttur FRU</strong>
+            <span style={{ color: '#64748b' }}>➔ 48 km ➔</span>
+            <strong style={{ color: '#60a5fa' }}>Wenlock Specialist Hub (Mangaluru)</strong>
+          </div>
+          <span style={{ color: '#f87171', fontWeight: 700 }}>
+            🚨 108 FRU Antivenom Ambulance Priority Active
+          </span>
+        </div>
+      </div>
+
       {/* Top Header Card */}
       <div
         style={{
