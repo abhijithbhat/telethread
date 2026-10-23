@@ -98,17 +98,19 @@ class SarvamKeyRotator:
         return len(self.get_all_keys())
 
     def get_key_pool_status(self) -> Dict[str, Any]:
-        """Exposes status of key pool for health checks and UI badges."""
+        """Exposes status of key pool for health checks and UI badges without exposing raw keys."""
         keys = self.get_all_keys()
         total = len(keys)
         idx = self.active_key_index if total > 0 else 0
         if total > 0:
             idx = idx % total
+        masked_keys = [f"{k[:4]}...{k[-4:]}" for k in keys if len(k) > 8]
         return {
             "total_keys": total,
             "active_key_index": idx,
             "has_keys": total > 0,
-            "masked_active_key": f"{keys[idx][:4]}...{keys[idx][-4:]}" if total > 0 and len(keys[idx]) >= 8 else None,
+            "masked_active_key": masked_keys[idx] if total > 0 and len(masked_keys) > idx else None,
+            "masked_keys": masked_keys,
         }
 
     def rotate_key(self):
@@ -132,6 +134,7 @@ def transcribe_audio_sarvam(
     file_bytes: bytes,
     filename: str = "audio.webm",
     language_code: str = "kn-IN",
+    mime_type: Optional[str] = None,
 ) -> Dict[str, Any]:
     """
     Transcribes audio bytes using Sarvam AI Speech-to-Text API (saaras:v3).
@@ -147,6 +150,17 @@ def transcribe_audio_sarvam(
             "error": "No audio data recorded",
         }
 
+    # 10 MB payload security check
+    MAX_AUDIO_BYTES = 10 * 1024 * 1024
+    if len(file_bytes) > MAX_AUDIO_BYTES:
+        logger.warning(f"Audio payload exceeds 10 MB limit ({len(file_bytes)} bytes)")
+        return {
+            "transcript": "",
+            "language_code": language_code,
+            "provider": "browser_fallback",
+            "error": "Audio file exceeds 10 MB limit",
+        }
+
     keys = sarvam_rotator.get_all_keys()
     if not keys:
         logger.warning("No Sarvam API keys available in rotator. Returning browser fallback.")
@@ -157,10 +171,12 @@ def transcribe_audio_sarvam(
             "error": "No Sarvam API keys configured in pool",
         }
 
-    # Determine MIME container type based on filename (supports Safari MP4/AAC and Chrome WebM)
+    # Determine MIME container type based on filename & mime_type (stripping ;codecs=opus)
     fname = filename or "audio.webm"
     fname_lower = fname.lower()
-    if fname_lower.endswith(".mp4") or fname_lower.endswith(".m4a"):
+    if mime_type and "/" in mime_type:
+        content_type = mime_type.split(";")[0].strip()
+    elif fname_lower.endswith(".mp4") or fname_lower.endswith(".m4a"):
         content_type = "audio/mp4"
     elif fname_lower.endswith(".aac"):
         content_type = "audio/aac"
@@ -172,6 +188,10 @@ def transcribe_audio_sarvam(
         content_type = "audio/ogg"
     else:
         content_type = "audio/webm"
+
+    # Normalize: strip any residual codecs
+    if ";" in content_type:
+        content_type = content_type.split(";")[0].strip()
 
     url = "https://api.sarvam.ai/speech-to-text"
     num_keys = len(keys)

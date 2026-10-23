@@ -53,14 +53,17 @@ export interface AutonomousActionResponse {
  * Allows custom override in localStorage ('TELETHREAD_API_URL').
  */
 export function resolveApiBaseUrl(): string {
+  let rawApi = '';
   if (typeof window !== 'undefined') {
     const custom = localStorage.getItem('TELETHREAD_API_URL');
     if (custom && custom.trim()) {
-      return custom.trim().replace(/\/+$/, '');
+      rawApi = custom.trim();
     }
   }
 
-  let rawApi = (import.meta.env.VITE_API_BASE_URL || '').trim();
+  if (!rawApi) {
+    rawApi = (import.meta.env.VITE_API_BASE_URL || '').trim();
+  }
 
   if (typeof window !== 'undefined') {
     const hostname = window.location.hostname;
@@ -72,7 +75,7 @@ export function resolveApiBaseUrl(): string {
 
     // If running in browser and NOT localhost, but rawApi is empty or points to localhost
     if (!isLocalhost && (!rawApi || rawApi.includes('localhost') || rawApi.includes('127.0.0.1'))) {
-      return 'https://telethread-api.onrender.com';
+      rawApi = 'https://telethread-api.onrender.com';
     }
   }
 
@@ -80,8 +83,16 @@ export function resolveApiBaseUrl(): string {
     rawApi = 'http://localhost:8000';
   }
 
+  // Strip trailing slashes
+  rawApi = rawApi.replace(/\/+$/, '');
+
+  // Automatically prefix https:// for bare domain/Render hostnames, or http:// for localhost
   if (!/^https?:\/\//i.test(rawApi)) {
-    rawApi = `https://${rawApi}`;
+    if (rawApi.includes('localhost') || rawApi.startsWith('127.0.0.1')) {
+      rawApi = `http://${rawApi}`;
+    } else {
+      rawApi = `https://${rawApi}`;
+    }
   }
 
   return rawApi.replace(/\/+$/, '');

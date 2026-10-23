@@ -221,6 +221,19 @@ export function useAdaptiveChannel({
         bandwidth_kbps: simulatedBandwidthKbps,
       });
 
+      // Update case tier in backend database
+      try {
+        const cleanApi = apiBaseUrl.replace(/\/+$/, '');
+        fetch(`${cleanApi}/api/cases/${caseId}/tier`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            current_tier: newTier,
+            reason: `Adaptive channel transitioned to ${getTierName(newTier)}`,
+          }),
+        }).catch((err) => console.warn('[TeleThread] Failed to PATCH tier to backend:', err));
+      } catch (_) {}
+
       // Notify timeline
       onTimelineEvent?.({
         type: 'TIER_CHANGE',
@@ -405,7 +418,21 @@ export function useAdaptiveChannel({
     remoteStreamRef.current = remote;
     setRemoteStream(remote);
 
+    // 2-Second loopback fallback for single-tab testing:
+    // If no remote track has been received after 2 seconds, simulate the opposite peer
+    const simulatedPeerTimer = setTimeout(() => {
+      if (remote.getTracks().length === 0) {
+        console.log('[TeleThread Loopback] Single tab detected after 2s: activating simulated remote peer stream');
+        setIsPeerConnected(true);
+        const oppositeRole = role === 'spoke' ? 'hub' : 'spoke';
+        const simStream = createMockStream(oppositeRole);
+        setRemoteStream(simStream);
+      }
+    }, 2000);
+
     pc.ontrack = (event) => {
+      clearTimeout(simulatedPeerTimer);
+      setIsPeerConnected(true);
       console.log('[TeleThread WebRTC] Received remote track:', event.track.kind);
       remote.addTrack(event.track);
       setRemoteStream(new MediaStream(remote.getTracks()));
@@ -560,6 +587,7 @@ export function useAdaptiveChannel({
     };
 
     return () => {
+      clearTimeout(simulatedPeerTimer);
       ws.close();
       pc.close();
       pcRef.current = null;

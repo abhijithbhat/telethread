@@ -59,6 +59,11 @@ class PrescriptionRequest(BaseModel):
     doctor_reg: Optional[str] = "KMC-78452"
 
 
+class TierUpdateRequest(BaseModel):
+    current_tier: int = Field(..., ge=1, le=4, description="Target network tier (1-4)")
+    reason: Optional[str] = Field(None, description="Reason for tier adaptation")
+
+
 def _urgency_sort_key(case: Case):
     red_flag_score = 0 if case.is_red_flag else 1
     urgency_map = {"CRITICAL": 0, "HIGH": 1, "ROUTINE": 2}
@@ -165,6 +170,42 @@ def get_case(case_id: str, db: Session = Depends(get_db)):
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Case with ID '{case_id}' not found",
         )
+    return case.to_dict()
+
+
+@router.patch("/{case_id}/tier")
+def update_case_tier(
+    case_id: str,
+    payload: TierUpdateRequest,
+    db: Session = Depends(get_db),
+):
+    """
+    Updates case.current_tier, appends a tier-transition event to timeline,
+    calls flag_modified, and commits to SQLite.
+    """
+    case = db.query(Case).filter(Case.id == case_id).first()
+    if not case:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Case with ID '{case_id}' not found",
+        )
+
+    old_tier = case.current_tier
+    case.current_tier = payload.current_tier
+
+    timeline_entry = {
+        "timestamp": datetime.now().strftime("%H:%M:%S"),
+        "type": "TIER_CHANGE",
+        "content": payload.reason or f"Network channel adapted from Tier {old_tier} to Tier {payload.current_tier}",
+        "tier": payload.current_tier,
+    }
+    current_timeline = list(case.timeline or [])
+    current_timeline.append(timeline_entry)
+    case.timeline = current_timeline
+    flag_modified(case, "timeline")
+
+    db.commit()
+    db.refresh(case)
     return case.to_dict()
 
 

@@ -126,6 +126,7 @@ async def speech_to_text(
             file_bytes=file_bytes,
             filename=filename,
             language_code=language_code,
+            mime_type=upload.content_type,
         )
         return result
     except Exception as exc:
