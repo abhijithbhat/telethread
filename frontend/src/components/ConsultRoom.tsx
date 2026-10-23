@@ -27,6 +27,8 @@ import {
   transcribeAudio,
   runBrowserSpeechRecognition,
   executeAutonomousAction,
+  resolveApiBaseUrl,
+  resolveWsBaseUrl,
 } from '../utils/voiceService';
 
 export interface CaseTimelineItem {
@@ -84,6 +86,14 @@ export const ConsultRoom: React.FC<ConsultRoomProps> = ({
   onCaseUpdate,
   onLeave,
 }) => {
+  // Compute effective backend URLs (auto-detects Render cloud URL when deployed)
+  const effectiveApiBaseUrl = (apiBaseUrl && !apiBaseUrl.includes('localhost'))
+    ? apiBaseUrl
+    : resolveApiBaseUrl();
+  const effectiveWsBaseUrl = (wsBaseUrl && !wsBaseUrl.includes('localhost'))
+    ? wsBaseUrl
+    : resolveWsBaseUrl(effectiveApiBaseUrl);
+
   // Local timeline state for real-time reactivity without page reload
   const [timeline, setTimeline] = useState<CaseTimelineItem[]>(caseData.timeline || []);
   const [selectedPhotoModal, setSelectedPhotoModal] = useState<string | null>(null);
@@ -140,8 +150,8 @@ export const ConsultRoom: React.FC<ConsultRoomProps> = ({
   } = useAdaptiveChannel({
     caseId: caseData.id,
     role,
-    apiBaseUrl,
-    wsBaseUrl,
+    apiBaseUrl: effectiveApiBaseUrl,
+    wsBaseUrl: effectiveWsBaseUrl,
     onTimelineEvent: handleTimelineEvent,
   });
 
@@ -188,7 +198,7 @@ export const ConsultRoom: React.FC<ConsultRoomProps> = ({
     }
   };
 
-  // Voice Note Recorder (15s voice note)
+  // Voice Note Recorder (15s voice note with Safari MP4 + Chrome WebM support)
   const startVoiceRecording = async () => {
     try {
       let stream = localStream;
@@ -196,7 +206,20 @@ export const ConsultRoom: React.FC<ConsultRoomProps> = ({
         stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       }
 
-      const recorder = new MediaRecorder(stream);
+      // Detect container supported by browser (Safari uses audio/mp4, Chrome uses audio/webm)
+      let mimeType = '';
+      if (typeof MediaRecorder !== 'undefined' && typeof MediaRecorder.isTypeSupported === 'function') {
+        if (MediaRecorder.isTypeSupported('audio/mp4')) {
+          mimeType = 'audio/mp4';
+        } else if (MediaRecorder.isTypeSupported('audio/webm;codecs=opus')) {
+          mimeType = 'audio/webm;codecs=opus';
+        } else if (MediaRecorder.isTypeSupported('audio/webm')) {
+          mimeType = 'audio/webm';
+        }
+      }
+
+      const options: MediaRecorderOptions = mimeType ? { mimeType } : {};
+      const recorder = new MediaRecorder(stream, options);
       mediaRecorderRef.current = recorder;
       audioChunksRef.current = [];
 
@@ -207,15 +230,28 @@ export const ConsultRoom: React.FC<ConsultRoomProps> = ({
       };
 
       recorder.onstop = async () => {
-        const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
+        const actualMime = recorder.mimeType || mimeType || 'audio/mp4';
+        const audioBlob = new Blob(audioChunksRef.current, { type: actualMime });
         const reader = new FileReader();
         reader.readAsDataURL(audioBlob);
         reader.onloadend = async () => {
           const base64Audio = reader.result as string;
           const timestamp = new Date().toLocaleTimeString();
-          const transcript = role === 'spoke'
-            ? 'Spoke Audio Note: Patient complaining of severe crushing chest pain, diaphoresis.'
-            : 'Hub Doctor Note: Administer Disprin 325mg immediately, prepare for urgent ambulance dispatch.';
+
+          // Try real-time Sarvam STT transcription for the recorded 15s note
+          let transcript = '';
+          try {
+            const sttRes = await transcribeAudio(effectiveApiBaseUrl, audioBlob, 'kn-IN');
+            if (sttRes && sttRes.transcript && sttRes.transcript.trim()) {
+              transcript = sttRes.transcript.trim();
+            }
+          } catch (_) {}
+
+          if (!transcript) {
+            transcript = role === 'spoke'
+              ? 'Spoke Audio Note: Patient complaining of severe crushing chest pain, diaphoresis.'
+              : 'Hub Doctor Note: Administer Disprin 325mg immediately, prepare for urgent ambulance dispatch.';
+          }
 
           if (currentTier === 4) {
             // Queue to IndexedDB Store-and-Forward outbox
@@ -280,10 +316,10 @@ export const ConsultRoom: React.FC<ConsultRoomProps> = ({
       setAgentStatusNote('Transcribing voice via Sarvam AI...');
       try {
         const audioBlob = await stopAudioRecording();
-        const res = await transcribeAudio(apiBaseUrl, audioBlob, agentLang);
+        const res = await transcribeAudio(effectiveApiBaseUrl, audioBlob, agentLang);
         let transcript = res.transcript;
         if (!transcript) {
-          transcript = await runBrowserSpeechRecognition(agentLang, 3000);
+          transcript = await runBrowserSpeechRecognition(agentLang, 3500);
         }
         if (transcript) {
           const timestamp = new Date().toLocaleTimeString();
@@ -299,8 +335,12 @@ export const ConsultRoom: React.FC<ConsultRoomProps> = ({
           setAgentStatusNote(`Transcribed: "${transcript.slice(0, 40)}..."`);
           setTimeout(() => setAgentStatusNote(null), 4000);
         } else {
-          setAgentStatusNote('No speech detected');
-          setTimeout(() => setAgentStatusNote(null), 3000);
+          setAgentStatusNote(
+            agentLang === 'kn-IN'
+              ? 'ಧ್ವನಿ ಪತ್ತೆಯಾಗಿಲ್ಲ. ಮತ್ತೊಮ್ಮೆ ಮಾತನಾಡಿ (No speech detected)'
+              : 'No speech detected. Please speak clearly into the mic.'
+          );
+          setTimeout(() => setAgentStatusNote(null), 4000);
         }
       } catch (err: any) {
         setAgentStatusNote(`Voice error: ${err.message}`);
@@ -312,7 +352,7 @@ export const ConsultRoom: React.FC<ConsultRoomProps> = ({
         setIsRecordingConsultVoice(true);
         setAgentStatusNote(`Listening in ${agentLang === 'kn-IN' ? 'Kannada' : 'English'}... Click to finish`);
       } catch (err: any) {
-        setAgentStatusNote('Mic error, running browser recognition...');
+        setAgentStatusNote('Mic access error, trying browser recognition...');
         const text = await runBrowserSpeechRecognition(agentLang, 5000);
         if (text) {
           const timestamp = new Date().toLocaleTimeString();
@@ -336,7 +376,7 @@ export const ConsultRoom: React.FC<ConsultRoomProps> = ({
       await handleSnapPhoto();
 
       const actionRes = await executeAutonomousAction(
-        apiBaseUrl,
+        effectiveApiBaseUrl,
         `Evaluate ongoing consultation on ${caseData.id}. Review acute complaints and draft emergency medication orders.`,
         agentLang,
         'consult',
@@ -371,11 +411,15 @@ export const ConsultRoom: React.FC<ConsultRoomProps> = ({
       setTimeout(() => setAgentStatusNote(null), 4000);
 
       if (actionRes.spoken_reply) {
-        speakText(apiBaseUrl, actionRes.spoken_reply, agentLang, actionRes.audio_base64);
+        speakText(effectiveApiBaseUrl, actionRes.spoken_reply, agentLang, actionRes.audio_base64);
       }
     } catch (err: any) {
-      setAgentStatusNote(`AI Co-Consultant error: ${err.message}`);
-      setTimeout(() => setAgentStatusNote(null), 4000);
+      const isCold = err.message?.includes('Load failed') || err.message?.includes('Failed to fetch');
+      const hint = isCold
+        ? ' (Connecting to Render backend. If container was sleeping, please allow ~20s to wake up and retry).'
+        : '';
+      setAgentStatusNote(`AI Co-Consultant error: ${err.message}${hint}`);
+      setTimeout(() => setAgentStatusNote(null), 5000);
     } finally {
       setIsExecutingAgentAction(false);
     }
@@ -1541,8 +1585,49 @@ export const ConsultRoom: React.FC<ConsultRoomProps> = ({
               </button>
             </div>
 
+            {/* 1-Click Simulation Chip for Live Consult */}
+            <div style={{ display: 'flex', gap: '6px', marginTop: '6px' }}>
+              <button
+                type="button"
+                onClick={() => {
+                  const sampleText =
+                    agentLang === 'kn-IN'
+                      ? 'ನಂಗೆ ಹುಷಾರಿಲ್ಲ, ಎದೆ ತುಂಬಾ ನೋಯುತ್ತಿದೆ ಮತ್ತು ಬೆವರು ಬರುತ್ತಿದೆ'
+                      : 'Patient complaining of severe crushing chest pain, diaphoresis and breathlessness';
+                  const timestamp = new Date().toLocaleTimeString();
+                  handleTimelineEvent({
+                    timestamp,
+                    type: 'VOICE_TRANSLATION',
+                    role: role === 'spoke' ? 'Patient / Spoke' : 'Specialist Doctor',
+                    content: `[${agentLang === 'kn-IN' ? 'ಕನ್ನಡ' : 'English'}] "${sampleText}"`,
+                    transcript: sampleText,
+                    tier: currentTier,
+                  });
+                  setAgentStatusNote(`Simulated voice: "${sampleText.slice(0, 35)}..."`);
+                  setTimeout(() => setAgentStatusNote(null), 3500);
+                }}
+                style={{
+                  width: '100%',
+                  padding: '5px 8px',
+                  borderRadius: '6px',
+                  backgroundColor: '#0f172a',
+                  border: '1px solid #334155',
+                  color: '#94a3b8',
+                  fontSize: '11px',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '4px',
+                }}
+                title="1-Click simulate spoken patient complaints into consult timeline"
+              >
+                <span>⚡ {agentLang === 'kn-IN' ? '1-ಕ್ಲಿಕ್ ಸಿಮ್ಯುಲೇಶನ್: "ನಂಗೆ ಹುಷಾರಿಲ್ಲ, ಎದೆ ನೋವು"' : '1-Click Simulation: "Severe chest pain"'}</span>
+              </button>
+            </div>
+
             {agentStatusNote && (
-              <div style={{ fontSize: '11px', color: '#38bdf8', fontStyle: 'italic' }}>
+              <div style={{ fontSize: '11px', color: '#38bdf8', fontStyle: 'italic', marginTop: '4px' }}>
                 ℹ️ {agentStatusNote}
               </div>
             )}
@@ -1681,11 +1766,30 @@ export const ConsultRoom: React.FC<ConsultRoomProps> = ({
                   {isVoice && (
                     <div style={{ marginTop: '4px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
                       {event.audioUrl && (
-                        <audio
-                          src={event.audioUrl}
-                          controls
-                          style={{ width: '100%', height: '30px', marginTop: '4px' }}
-                        />
+                        <>
+                          <audio
+                            src={event.audioUrl}
+                            controls
+                            onError={(e) => {
+                              const target = e.currentTarget;
+                              target.style.display = 'none';
+                              const fallback = target.nextElementSibling as HTMLElement;
+                              if (fallback) fallback.style.display = 'block';
+                            }}
+                            style={{ width: '100%', height: '30px', marginTop: '4px' }}
+                          />
+                          <div
+                            style={{
+                              display: 'none',
+                              fontSize: '10px',
+                              color: '#94a3b8',
+                              fontStyle: 'italic',
+                              padding: '2px 4px',
+                            }}
+                          >
+                            🎙️ Audio note recorded
+                          </div>
+                        </>
                       )}
                       {event.transcript && (
                         <div
