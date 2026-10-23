@@ -9,9 +9,27 @@ Wires together:
 - /health Health Check Endpoint
 """
 
+import os
+from pathlib import Path
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+
+# Auto-load .env file from backend or root directory if present
+for _env_candidate in [Path(".env"), Path("backend/.env"), Path(__file__).parent / ".env", Path(__file__).parent.parent / ".env"]:
+    if _env_candidate.is_file():
+        try:
+            with open(_env_candidate, "r", encoding="utf-8") as _f:
+                for _line in _f:
+                    _line = _line.strip()
+                    if _line and not _line.startswith("#") and "=" in _line:
+                        _k, _v = _line.split("=", 1)
+                        _k = _k.strip()
+                        _v = _v.strip().strip('"').strip("'")
+                        if _k and _k not in os.environ:
+                            os.environ[_k] = _v
+        except Exception:
+            pass
 
 try:
     from .database import init_db
