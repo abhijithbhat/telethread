@@ -517,9 +517,9 @@ export const HubQueueView: React.FC<HubQueueViewProps> = ({
   return (
     <div
       style={{
-        maxWidth: '1200px',
+        maxWidth: '1400px',
         margin: '0 auto',
-        padding: '24px 16px',
+        padding: '16px 20px',
         fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
         color: '#1e293b',
         textAlign: 'left',
@@ -530,10 +530,10 @@ export const HubQueueView: React.FC<HubQueueViewProps> = ({
         style={{
           background: 'linear-gradient(135deg, #1e1b4b 0%, #312e81 50%, #4338ca 100%)',
           borderRadius: '16px',
-          padding: '24px 28px',
+          padding: '16px 22px',
           color: '#ffffff',
           boxShadow: '0 10px 25px -5px rgba(49, 46, 129, 0.3)',
-          marginBottom: '24px',
+          marginBottom: '16px',
         }}
       >
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '16px' }}>
@@ -665,7 +665,7 @@ export const HubQueueView: React.FC<HubQueueViewProps> = ({
           </p>
         </div>
       ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
           {filteredCases.map((c) => {
             const isRedFlag = c.is_red_flag || c.urgency === 'CRITICAL';
             const isHigh = c.urgency === 'HIGH';
@@ -680,7 +680,7 @@ export const HubQueueView: React.FC<HubQueueViewProps> = ({
                   boxShadow: isRedFlag
                     ? '0 8px 24px rgba(239, 68, 68, 0.15)'
                     : '0 4px 12px rgba(0, 0, 0, 0.03)',
-                  padding: '20px 24px',
+                  padding: '16px 20px',
                   position: 'relative',
                   overflow: 'hidden',
                   transition: 'transform 0.15s ease',

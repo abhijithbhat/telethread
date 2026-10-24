@@ -194,9 +194,9 @@ export const BenchmarksView: React.FC<BenchmarksViewProps> = ({ lang = 'en' }) =
   return (
     <div
       style={{
-        maxWidth: '1160px',
+        maxWidth: '1400px',
         margin: '0 auto',
-        padding: '24px 16px',
+        padding: '16px 20px',
         fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
         color: '#1e293b',
         textAlign: 'left',
@@ -207,10 +207,10 @@ export const BenchmarksView: React.FC<BenchmarksViewProps> = ({ lang = 'en' }) =
         style={{
           background: 'linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #334155 100%)',
           borderRadius: '16px',
-          padding: '28px 32px',
+          padding: '20px 24px',
           color: '#ffffff',
           boxShadow: '0 12px 28px rgba(15, 23, 42, 0.35)',
-          marginBottom: '28px',
+          marginBottom: '20px',
         }}
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
@@ -254,10 +254,10 @@ export const BenchmarksView: React.FC<BenchmarksViewProps> = ({ lang = 'en' }) =
         style={{
           background: '#ffffff',
           borderRadius: '16px',
-          padding: '26px 28px',
+          padding: '20px 24px',
           border: '1px solid #e2e8f0',
           boxShadow: '0 4px 14px rgba(0, 0, 0, 0.04)',
-          marginBottom: '28px',
+          marginBottom: '20px',
         }}
       >
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '12px', marginBottom: '8px' }}>

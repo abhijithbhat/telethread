@@ -103,12 +103,11 @@ export const NetworkSimulatorHUD: React.FC<NetworkSimulatorHUDProps> = ({
   return (
     <div
       style={{
-        position: 'sticky',
-        top: 0,
-        zIndex: 100,
+        position: 'relative',
+        zIndex: 50,
         backgroundColor: '#090d16',
         borderBottom: '1px solid #1e293b',
-        boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.7)',
+        boxShadow: '0 4px 15px rgba(0, 0, 0, 0.4)',
         color: '#f1f5f9',
         fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
       }}

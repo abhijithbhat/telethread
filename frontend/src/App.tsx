@@ -210,13 +210,15 @@ export function App() {
     setActiveView('consult');
   };
 
+  const isFixedViewportView = activeView === 'consult' || activeView === 'umap';
+
   return (
     <div
       style={{
         minHeight: '100vh',
-        height: activeView === 'consult' ? '100vh' : 'auto',
-        maxHeight: activeView === 'consult' ? '100vh' : 'none',
-        overflow: activeView === 'consult' ? 'hidden' : 'visible',
+        height: isFixedViewportView ? '100vh' : 'auto',
+        maxHeight: isFixedViewportView ? '100vh' : 'none',
+        overflow: isFixedViewportView ? 'hidden' : 'visible',
         backgroundColor: '#070a13',
         color: '#f8fafc',
         display: 'flex',
@@ -226,23 +228,19 @@ export function App() {
     >
       {/* 1. Global Navigation Bar */}
       <header
+        className="telethread-global-header"
         style={{
           position: 'sticky',
           top: 0,
           zIndex: 200,
           backgroundColor: '#0a0f1d',
           borderBottom: '1px solid #1e293b',
-          padding: '10px 20px',
-          display: 'flex',
-          flexWrap: 'wrap',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          gap: '12px',
+          padding: '8px 16px',
           boxShadow: '0 4px 20px rgba(0, 0, 0, 0.5)',
         }}
       >
         {/* Logo & Tagline */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexShrink: 0 }}>
           <div
             style={{
               width: '36px',
@@ -298,6 +296,7 @@ export function App() {
             border: '1px solid #1e293b',
             gap: '4px',
             flexWrap: 'wrap',
+            flexShrink: 0,
           }}
         >
           {/* Tab 1: Spoke PHC */}
@@ -417,7 +416,7 @@ export function App() {
         </nav>
 
         {/* Right Actions: AI Agent Bar, Sarvam Key Status, Role & Lang */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', flexShrink: 0 }}>
           {/* Autonomous Voice AI Launcher */}
           <button
             type="button"
@@ -560,7 +559,8 @@ export function App() {
           display: 'flex',
           flexDirection: 'column',
           minHeight: 0,
-          overflow: activeView === 'consult' ? 'hidden' : 'visible',
+          overflow: isFixedViewportView ? 'hidden' : 'visible',
+          width: '100%',
         }}
       >
         {activeView === 'spoke' && (

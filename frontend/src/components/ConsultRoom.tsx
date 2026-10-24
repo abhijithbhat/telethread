@@ -204,6 +204,7 @@ export const ConsultRoom: React.FC<ConsultRoomProps> = ({
   const [isRecordingConsultVoice, setIsRecordingConsultVoice] = useState(false);
   const [isExecutingAgentAction, setIsExecutingAgentAction] = useState(false);
   const [agentStatusNote, setAgentStatusNote] = useState<string | null>(null);
+  const [splitDoctorTab, setSplitDoctorTab] = useState<'all' | 'feed' | 'ai' | 'rx'>('all');
 
   // Event handler for timeline events
   const handleTimelineEvent = useCallback(
@@ -1241,25 +1242,86 @@ export const ConsultRoom: React.FC<ConsultRoomProps> = ({
   // ==========================================
   // RENDER: 👨‍⚕️ SPECIALIST DOCTOR WORKSTATION (3-COLUMN CLINICAL COCKPIT)
   // ==========================================
-  const renderDoctorCockpit = () => {
+  const renderDoctorCockpit = (isSplit = false) => {
+    const showCol1 = !isSplit || splitDoctorTab === 'all' || splitDoctorTab === 'feed';
+    const showCol2 = !isSplit || splitDoctorTab === 'all' || splitDoctorTab === 'ai';
+    const showCol3 = !isSplit || splitDoctorTab === 'all' || splitDoctorTab === 'rx';
+
     return (
       <div
         style={{
-          display: 'grid',
-          gridTemplateColumns: 'minmax(320px, 1.1fr) minmax(340px, 1.2fr) minmax(380px, 1.3fr)',
-          gap: '14px',
-          flex: '1 1 auto',
-          padding: '16px',
-          overflow: 'hidden',
-          minHeight: 0,
+          display: 'flex',
+          flexDirection: 'column',
           height: '100%',
-          backgroundColor: '#070a13',
+          minHeight: 0,
+          flex: '1 1 auto',
+          overflow: isSplit ? 'hidden' : 'visible',
+          width: '100%',
         }}
       >
-        {/* ========================================================= */}
-        {/* COL 1: Patient Live Feed & Diagnostic Media */}
-        {/* ========================================================= */}
+        {isSplit && (
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              padding: '6px 12px',
+              backgroundColor: '#0b1120',
+              borderBottom: '1px solid #1e293b',
+              flexWrap: 'wrap',
+              flexShrink: 0,
+            }}
+          >
+            <span style={{ fontSize: '11px', fontWeight: 700, color: '#94a3b8', marginRight: '4px' }}>
+              Specialist Panels:
+            </span>
+            {(
+              [
+                { id: 'all', label: 'All 3 (Stacked)' },
+                { id: 'feed', label: '📹 Live Feed' },
+                { id: 'ai', label: '🤖 AI Bridge' },
+                { id: 'rx', label: '📋 Clinical Pad & e-Rx' },
+              ] as const
+            ).map((t) => (
+              <button
+                key={t.id}
+                type="button"
+                onClick={() => setSplitDoctorTab(t.id)}
+                style={{
+                  padding: '4px 8px',
+                  borderRadius: '6px',
+                  border: 'none',
+                  fontSize: '11px',
+                  fontWeight: splitDoctorTab === t.id ? 700 : 500,
+                  backgroundColor: splitDoctorTab === t.id ? '#2563eb' : '#1e293b',
+                  color: splitDoctorTab === t.id ? '#ffffff' : '#cbd5e1',
+                  cursor: 'pointer',
+                  transition: 'all 0.15s ease',
+                }}
+              >
+                {t.label}
+              </button>
+            ))}
+          </div>
+        )}
+
         <div
+          className={`consult-doctor-grid ${isSplit ? 'split-mode' : ''}`}
+          style={{
+            flex: '1 1 auto',
+            padding: '12px',
+            overflowY: isSplit ? 'auto' : undefined,
+            overflowX: 'hidden',
+            minHeight: 0,
+            height: '100%',
+            backgroundColor: '#070a13',
+          }}
+        >
+          {/* ========================================================= */}
+          {/* COL 1: Patient Live Feed & Diagnostic Media */}
+          {/* ========================================================= */}
+          {showCol1 && (
+            <div
           style={{
             display: 'flex',
             flexDirection: 'column',
@@ -1533,10 +1595,12 @@ export const ConsultRoom: React.FC<ConsultRoomProps> = ({
             )}
           </div>
         </div>
+        )}
 
         {/* ========================================================= */}
         {/* COL 2: Bilingual AI Co-Consultant & Live Kannada ↔ English Bridge */}
         {/* ========================================================= */}
+        {showCol2 && (
         <div
           style={{
             display: 'flex',
@@ -1777,10 +1841,12 @@ export const ConsultRoom: React.FC<ConsultRoomProps> = ({
             </div>
           </div>
         </div>
+        )}
 
         {/* ========================================================= */}
         {/* COL 3: Inline Doctor's Clinical Pad & 1-Click e-Prescription */}
         {/* ========================================================= */}
+        {showCol3 && (
         <div
           style={{
             display: 'flex',
@@ -2229,6 +2295,8 @@ export const ConsultRoom: React.FC<ConsultRoomProps> = ({
             )}
           </div>
         </div>
+        )}
+        </div>
       </div>
     );
   };
@@ -2239,12 +2307,11 @@ export const ConsultRoom: React.FC<ConsultRoomProps> = ({
   const renderSplitScreen = () => {
     return (
       <div
+        className="consult-split-grid"
         style={{
-          display: 'grid',
-          gridTemplateColumns: 'minmax(420px, 1fr) minmax(580px, 1.4fr)',
-          gap: '14px',
+          gap: '12px',
           flex: '1 1 auto',
-          padding: '16px',
+          padding: '12px',
           overflow: 'hidden',
           minHeight: 0,
           height: '100%',
@@ -2255,8 +2322,8 @@ export const ConsultRoom: React.FC<ConsultRoomProps> = ({
         {renderSpokeStation(true)}
 
         {/* Right Side: Doctor Workstation Cockpit */}
-        <div style={{ height: '100%', minHeight: 0, overflowY: 'auto' }}>
-          {renderDoctorCockpit()}
+        <div style={{ height: '100%', minHeight: 0, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+          {renderDoctorCockpit(true)}
         </div>
       </div>
     );
@@ -2268,7 +2335,8 @@ export const ConsultRoom: React.FC<ConsultRoomProps> = ({
         display: 'flex',
         flexDirection: 'column',
         height: '100%',
-        maxHeight: 'calc(100vh - 65px)',
+        minHeight: 0,
+        flex: '1 1 auto',
         overflow: 'hidden',
         backgroundColor: '#070a13',
         color: '#f8fafc',
@@ -2503,7 +2571,7 @@ export const ConsultRoom: React.FC<ConsultRoomProps> = ({
       {/* 3. Main Perspective View (Bounded to viewport with minHeight 0) */}
       <div style={{ flex: '1 1 auto', minHeight: 0, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
         {perspective === 'spoke' && renderSpokeStation(false)}
-        {perspective === 'doctor' && renderDoctorCockpit()}
+        {perspective === 'doctor' && renderDoctorCockpit(false)}
         {perspective === 'split' && renderSplitScreen()}
       </div>
 
