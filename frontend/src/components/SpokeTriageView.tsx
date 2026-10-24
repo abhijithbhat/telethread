@@ -297,9 +297,9 @@ export const SpokeTriageView: React.FC<SpokeTriageViewProps> = ({
   return (
     <div
       style={{
-        maxWidth: '1040px',
+        maxWidth: '1360px',
         margin: '0 auto',
-        padding: '24px 16px',
+        padding: '16px 20px',
         fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
         color: '#1e293b',
         textAlign: 'left',
@@ -310,14 +310,14 @@ export const SpokeTriageView: React.FC<SpokeTriageViewProps> = ({
         style={{
           background: 'linear-gradient(135deg, #1e1b4b 0%, #0f172a 60%, #172554 100%)',
           borderRadius: '16px',
-          padding: '20px 24px',
+          padding: '14px 20px',
           color: '#ffffff',
           boxShadow: '0 10px 30px -5px rgba(37, 99, 235, 0.3)',
           border: '1px solid #3b82f6',
-          marginBottom: '20px',
+          marginBottom: '14px',
           display: 'flex',
           flexDirection: 'column',
-          gap: '14px',
+          gap: '10px',
         }}
       >
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '12px' }}>
@@ -417,7 +417,7 @@ export const SpokeTriageView: React.FC<SpokeTriageViewProps> = ({
         {/* Mini Taluka Route Indicator */}
         <div
           style={{
-            padding: '10px 14px',
+            padding: '8px 12px',
             borderRadius: '8px',
             backgroundColor: 'rgba(15, 23, 42, 0.7)',
             border: '1px solid #334155',
@@ -449,10 +449,10 @@ export const SpokeTriageView: React.FC<SpokeTriageViewProps> = ({
         style={{
           background: 'linear-gradient(135deg, #065f46 0%, #047857 50%, #0f766e 100%)',
           borderRadius: '16px',
-          padding: '24px 28px',
+          padding: '16px 22px',
           color: '#ffffff',
           boxShadow: '0 10px 25px -5px rgba(6, 95, 70, 0.25)',
-          marginBottom: '24px',
+          marginBottom: '16px',
           position: 'relative',
           overflow: 'hidden',
         }}

@@ -239,7 +239,9 @@ export function TalukaUmapView({ onSelectSpoke, onSimulateCall, lang = 'en' }: T
       style={{
         display: 'flex',
         flexDirection: 'column',
-        height: 'calc(100vh - 75px)',
+        height: '100%',
+        minHeight: 0,
+        flex: '1 1 auto',
         backgroundColor: '#070a13',
         color: '#f8fafc',
         overflow: 'hidden',
@@ -248,14 +250,14 @@ export function TalukaUmapView({ onSelectSpoke, onSimulateCall, lang = 'en' }: T
       {/* Top Banner Toolbar */}
       <div
         style={{
-          padding: '12px 24px',
+          padding: '10px 18px',
           backgroundColor: '#0b1120',
           borderBottom: '1px solid #1e293b',
           display: 'flex',
           flexWrap: 'wrap',
           alignItems: 'center',
           justifyContent: 'space-between',
-          gap: '12px',
+          gap: '10px',
         }}
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
@@ -363,16 +365,9 @@ export function TalukaUmapView({ onSelectSpoke, onSimulateCall, lang = 'en' }: T
       </div>
 
       {/* Main Content Area */}
-      <div style={{ display: 'flex', flex: '1 1 auto', overflow: 'hidden' }}>
+      <div className="umap-main-container">
         {/* Left Side: Map Visualizer (SVG or OSM Embed) */}
-        <div
-          style={{
-            flex: '1 1 70%',
-            position: 'relative',
-            backgroundColor: '#050814',
-            overflow: 'hidden',
-          }}
-        >
+        <div className="umap-map-panel">
           {showLiveMapEmbed ? (
             /* OpenStreetMap / uMap Iframe Embed */
             <div style={{ width: '100%', height: '100%', display: 'flex', flexDirection: 'column' }}>
@@ -756,19 +751,7 @@ export function TalukaUmapView({ onSelectSpoke, onSimulateCall, lang = 'en' }: T
         </div>
 
         {/* Right Side: Selected Node Telemetry & Action Drawer */}
-        <div
-          style={{
-            flex: '1 1 30%',
-            maxWidth: '440px',
-            backgroundColor: '#0a0f1d',
-            borderLeft: '1px solid #1e293b',
-            display: 'flex',
-            flexDirection: 'column',
-            overflowY: 'auto',
-            padding: '20px',
-            gap: '16px',
-          }}
-        >
+        <div className="umap-sidebar-panel" style={{ padding: '16px', gap: '14px' }}>
           {/* Node Identity Card */}
           <div
             style={{
@@ -958,7 +941,7 @@ export function TalukaUmapView({ onSelectSpoke, onSimulateCall, lang = 'en' }: T
           </div>
 
           {/* Action CTAs */}
-          <div style={{ marginTop: 'auto', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+          <div style={{ marginTop: 'auto', display: 'flex', flexDirection: 'column', gap: '10px', paddingBottom: '16px' }}>
             <button
               type="button"
               onClick={() => {
