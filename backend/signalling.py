@@ -45,18 +45,24 @@ class SignallingConnectionManager:
             self.active_rooms[case_id] = {}
 
         # If a connection for this role already exists, close it cleanly first
-        if role in self.active_rooms[case_id]:
+        if role in self.active_rooms.get(case_id, {}):
             old_ws = self.active_rooms[case_id][role]
+            # Immediately assign the new socket so the room remains populated during any context switches
+            self.active_rooms[case_id][role] = websocket
             try:
                 await old_ws.close(code=1000, reason="Replaced by new connection")
             except Exception:
                 pass
 
+        # Re-ensure room dict exists in case an async event loop callback modified active_rooms
+        if case_id not in self.active_rooms:
+            self.active_rooms[case_id] = {}
+
         self.active_rooms[case_id][role] = websocket
         logger.info(f"Connected: case_id={case_id}, role={role}. Active roles: {list(self.active_rooms[case_id].keys())}")
 
         peer_role = "hub" if role == "spoke" else "spoke"
-        peer_connected = peer_role in self.active_rooms[case_id]
+        peer_connected = peer_role in self.active_rooms.get(case_id, {})
 
         # Send initial room status to the newly connected client
         await websocket.send_json({
@@ -68,7 +74,7 @@ class SignallingConnectionManager:
         })
 
         # If the other peer is already connected, notify them that this role joined
-        if peer_connected:
+        if peer_connected and peer_role in self.active_rooms.get(case_id, {}):
             peer_ws = self.active_rooms[case_id][peer_role]
             try:
                 await peer_ws.send_json({
@@ -81,18 +87,24 @@ class SignallingConnectionManager:
             except Exception as e:
                 logger.warning(f"Failed to notify peer {peer_role} in case {case_id}: {e}")
 
-    async def disconnect(self, case_id: str, role: str) -> None:
+    async def disconnect(self, case_id: str, role: str, websocket: Optional[WebSocket] = None) -> None:
         """
         Removes the WebSocket from the room and notifies the opposite peer if present.
+        If a specific websocket is provided, only disconnects if it matches the current active socket.
         """
         role = role.lower()
         if case_id in self.active_rooms:
             if role in self.active_rooms[case_id]:
+                current_ws = self.active_rooms[case_id][role]
+                # If a specific websocket was passed and it has already been superseded, ignore
+                if websocket is not None and current_ws is not websocket:
+                    logger.info(f"Ignoring stale disconnect for case_id={case_id}, role={role}")
+                    return
                 del self.active_rooms[case_id][role]
                 logger.info(f"Disconnected: case_id={case_id}, role={role}")
 
             peer_role = "hub" if role == "spoke" else "spoke"
-            if peer_role in self.active_rooms[case_id]:
+            if peer_role in self.active_rooms.get(case_id, {}):
                 peer_ws = self.active_rooms[case_id][peer_role]
                 try:
                     await peer_ws.send_json({
@@ -105,7 +117,7 @@ class SignallingConnectionManager:
                     logger.warning(f"Failed to notify peer {peer_role} about disconnect: {e}")
 
             # Clean up empty room
-            if not self.active_rooms[case_id]:
+            if case_id in self.active_rooms and not self.active_rooms[case_id]:
                 del self.active_rooms[case_id]
 
     async def relay_message(self, case_id: str, sender_role: str, message: Dict[str, Any]) -> bool:
@@ -218,7 +230,7 @@ async def consult_websocket_endpoint(websocket: WebSocket, case_id: str, role: s
 
     except WebSocketDisconnect:
         logger.info(f"Client disconnected: case_id={case_id}, role={normalized_role}")
-        await manager.disconnect(case_id, normalized_role)
+        await manager.disconnect(case_id, normalized_role, websocket)
     except Exception as exc:
         logger.error(f"Unexpected WebSocket error in case {case_id}, role {normalized_role}: {exc}")
-        await manager.disconnect(case_id, normalized_role)
+        await manager.disconnect(case_id, normalized_role, websocket)
