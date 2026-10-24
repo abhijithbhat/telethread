@@ -28,6 +28,7 @@ interface HealthcareNode {
   nearestFruId: string;
   connectedHubId: string;
   notes: string;
+  associatedCaseId?: string;
 }
 
 const HEALTHCARE_NODES: HealthcareNode[] = [
@@ -115,6 +116,7 @@ const HEALTHCARE_NODES: HealthcareNode[] = [
     nearestFruId: 'fru-puttur',
     connectedHubId: 'hub-mangaluru',
     notes: 'Prone to total cellular dropouts during Ghat monsoons & forest valley transit',
+    associatedCaseId: 'TT-101',
   },
   {
     id: 'spoke-beltangady',
@@ -135,6 +137,7 @@ const HEALTHCARE_NODES: HealthcareNode[] = [
     nearestFruId: 'fru-puttur',
     connectedHubId: 'hub-mangaluru',
     notes: 'Unstable 3G link with frequent packet loss spikes (35% loss)',
+    associatedCaseId: 'TT-102',
   },
   {
     id: 'spoke-karkala',
@@ -155,6 +158,7 @@ const HEALTHCARE_NODES: HealthcareNode[] = [
     nearestFruId: 'hub-udupi',
     connectedHubId: 'hub-udupi',
     notes: 'Manjula Nayak case registered; stable Tier 1 link with occasional flap',
+    associatedCaseId: 'TT-104',
   },
   {
     id: 'spoke-bhatkal',
@@ -175,6 +179,7 @@ const HEALTHCARE_NODES: HealthcareNode[] = [
     nearestFruId: 'hub-udupi',
     connectedHubId: 'hub-udupi',
     notes: 'Currently in Tier 4 Offline Outbox Mode due to optic fiber severance in Ghat',
+    associatedCaseId: 'TT-103',
   },
 ];
 
@@ -958,7 +963,7 @@ export function TalukaUmapView({ onSelectSpoke, onSimulateCall, lang = 'en' }: T
               type="button"
               onClick={() => {
                 if (onSimulateCall) {
-                  onSimulateCall(selectedNode.id === 'spoke-sullia' ? 'TT-101' : 'TT-102');
+                  onSimulateCall(selectedNode.associatedCaseId || (selectedNode.id === 'spoke-sullia' ? 'TT-101' : 'TT-102'));
                 }
               }}
               style={{

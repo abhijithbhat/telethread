@@ -268,9 +268,15 @@ export const HubQueueView: React.FC<HubQueueViewProps> = ({
 
     if (c.prescription) {
       setRxDiagnosis(c.prescription.diagnosis || '');
-      setRxMedication(c.prescription.medication || '');
-      setRxDosage(c.prescription.dosage || '');
-      setRxFollowUpDate(c.prescription.follow_up_date || '');
+      const medsList = Array.isArray(c.prescription.medications) ? c.prescription.medications : [];
+      if (medsList.length > 0) {
+        setRxMedication(medsList.map((m: any) => m?.name || '').filter(Boolean).join(', '));
+        setRxDosage(medsList.map((m: any) => m?.dosage || '').filter(Boolean).join('; '));
+      } else {
+        setRxMedication(c.prescription.medication || '');
+        setRxDosage(c.prescription.dosage || '');
+      }
+      setRxFollowUpDate(c.prescription.follow_up || c.prescription.follow_up_date || '');
       setRxAdvice(c.prescription.advice || '');
     } else if (c.is_red_flag) {
       setRxDiagnosis('Acute Coronary Syndrome (ACS) / NSTEMI');
@@ -293,12 +299,24 @@ export const HubQueueView: React.FC<HubQueueViewProps> = ({
     if (!selectedCaseForPrescription) return;
 
     setRxSubmitting(true);
+    const trimmedMed = rxMedication.trim();
+    const trimmedDosage = rxDosage.trim();
+    const medications = trimmedMed
+      ? [
+          {
+            name: trimmedMed,
+            ...(trimmedDosage ? { dosage: trimmedDosage } : {}),
+          },
+        ]
+      : [];
+
     const payload = {
-      diagnosis: rxDiagnosis,
-      medication: rxMedication,
-      dosage: rxDosage,
-      follow_up_date: rxFollowUpDate,
-      advice: rxAdvice,
+      diagnosis: rxDiagnosis || undefined,
+      medications,
+      advice: rxAdvice || undefined,
+      follow_up: rxFollowUpDate || undefined,
+      doctor_name: selectedCaseForPrescription?.prescription?.doctor_name || 'Dr. K. Srinivas, MD',
+      doctor_reg: selectedCaseForPrescription?.prescription?.doctor_reg || 'KMC-78452',
     };
 
     try {
@@ -313,17 +331,32 @@ export const HubQueueView: React.FC<HubQueueViewProps> = ({
       if (!res.ok) {
         throw new Error(`HTTP ${res.status}`);
       }
+      const data = await res.json();
+      if (data.case) {
+        setCases((prev) =>
+          prev.map((c) =>
+            c.id === selectedCaseForPrescription.id ? data.case : c
+          )
+        );
+        setSelectedCaseForPrescription(data.case);
+        try {
+          window.dispatchEvent(new CustomEvent('telethread_case_updated', { detail: data.case }));
+        } catch {}
+      }
     } catch (err) {
       console.warn('Backend prescription API offline, updating local case state:', err);
-    } finally {
-      // Update local case state
+      // Fallback local update
+      const localUpdatedCase = {
+        ...selectedCaseForPrescription,
+        prescription: payload,
+      };
       setCases((prev) =>
         prev.map((c) =>
-          c.id === selectedCaseForPrescription.id
-            ? { ...c, prescription: payload }
-            : c
+          c.id === selectedCaseForPrescription.id ? localUpdatedCase : c
         )
       );
+      setSelectedCaseForPrescription(localUpdatedCase);
+    } finally {
       setRxSubmitting(false);
       setRxSuccess(true);
     }
@@ -424,8 +457,16 @@ export const HubQueueView: React.FC<HubQueueViewProps> = ({
   const getOfflineSmsPreview = (c: any, langChoice: 'en' | 'kn') => {
     if (!c) return '';
     const diag = rxDiagnosis || c.prescription?.diagnosis || 'Clinical evaluation';
-    const meds = rxMedication || c.prescription?.medication || 'As directed at PHC';
-    const fup = rxFollowUpDate || c.prescription?.follow_up_date || 'Immediately';
+    const meds =
+      rxMedication ||
+      (Array.isArray(c.prescription?.medications) && c.prescription.medications.length > 0
+        ? c.prescription.medications
+            .map((m: any) => `${m?.name || ''} ${m?.dosage || ''}`.trim())
+            .filter(Boolean)
+            .join(', ')
+        : c.prescription?.medication) ||
+      'As directed at PHC';
+    const fup = rxFollowUpDate || c.prescription?.follow_up || c.prescription?.follow_up_date || 'Immediately';
 
     if (langChoice === 'kn') {
       return `[ಟೆಲಿಥ್ರೆಡ್ 2G SMS] ಡಾ. ರಾವ್ -> ${c.patient_name} (${c.village_taluka}): ರೋಗನಿರ್ಣಯ: ${diag}. ಔಷಧಿ: ${meds}. ಮುಂದಿನ ಭೇಟಿ: ${fup}. ತುರ್ತು ಸಹಾಯಕ್ಕೆ 108 ಕರೆ ಮಾಡಿ.`;
@@ -1191,7 +1232,7 @@ export const HubQueueView: React.FC<HubQueueViewProps> = ({
 
                 {/* English SMS box */}
                 <div style={{ background: '#ffffff', padding: '8px 10px', borderRadius: '6px', fontSize: '12px', border: '1px solid #cbd5e1', marginBottom: '6px', color: '#1e293b' }}>
-                  <span style={{ fontSize: '10px', fontWeight: 700, color: '#64748b', display: 'block' }}>English (140-char max):</span>
+                  <span style={{ fontSize: '10px', fontWeight: 700, color: '#64748b', display: 'block' }}>English (2G SMS summary):</span>
                   {getOfflineSmsPreview(selectedCaseForPrescription, 'en')}
                 </div>
 
