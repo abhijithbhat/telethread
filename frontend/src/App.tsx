@@ -63,6 +63,7 @@ export function App() {
   const [activeRole, setActiveRole] = useState<'spoke' | 'hub'>('spoke');
   const [lang, setLang] = useState<Language>('en');
   const [activeCase, setActiveCase] = useState<CaseData>(DEFAULT_DEMO_CASE);
+  const [umapError, setUmapError] = useState<string | null>(null);
 
   // Global Autonomous Agent Modal State
   const [isAgentModalOpen, setIsAgentModalOpen] = useState(false);
@@ -125,12 +126,76 @@ export function App() {
   };
 
   // Triggered when Taluka uMap clicks "Simulate Call from This PHC"
-  const handleSimulateCallFromUmap = (caseId: string) => {
-    if (caseId) {
-      console.log(`[TeleThread] Simulating call from node associated with case: ${caseId}`);
+  const handleSimulateCallFromUmap = async (caseId?: string): Promise<boolean> => {
+    if (!caseId || typeof caseId !== 'string' || !caseId.trim()) {
+      const err = 'Cannot start consultation: missing or invalid case ID from map selection.';
+      console.error(`[TeleThread] ${err}`);
+      setUmapError(err);
+      return false;
     }
-    setActiveRole('spoke');
-    setActiveView('consult');
+
+    const targetId = caseId.trim();
+    setUmapError(null);
+
+    try {
+      // 1. Resolve case from backend API
+      const res = await fetch(`${apiBaseUrl}/api/cases/${encodeURIComponent(targetId)}`);
+      if (!res.ok) {
+        if (res.status === 404) {
+          throw new Error(`Case '${targetId}' was not found on server.`);
+        }
+        throw new Error(`Failed to retrieve case (HTTP ${res.status}).`);
+      }
+      const resolved = await res.json();
+      if (!resolved || !resolved.id) {
+        throw new Error(`Invalid case data received for '${targetId}'.`);
+      }
+
+      // 2. Update activeCase with resolved case before switching view
+      setActiveCase({
+        ...DEFAULT_DEMO_CASE,
+        ...resolved,
+        timeline: resolved.timeline || DEFAULT_DEMO_CASE.timeline,
+        vitals: resolved.vitals || DEFAULT_DEMO_CASE.vitals,
+      });
+      setActiveRole('spoke');
+      setActiveView('consult');
+      return true;
+    } catch (apiErr: any) {
+      console.warn(`[TeleThread] API resolution failed for '${targetId}': ${apiErr.message}. Checking local session fallback...`);
+
+      // Fallback: check session storage if backend is offline
+      let fallbackResolved: CaseData | null = null;
+      try {
+        const localStr = sessionStorage.getItem('telethread_latest_case');
+        if (localStr) {
+          const parsed = JSON.parse(localStr);
+          if (parsed && parsed.id === targetId) {
+            fallbackResolved = parsed;
+          }
+        }
+      } catch {}
+
+      if (!fallbackResolved && targetId === DEFAULT_DEMO_CASE.id) {
+        fallbackResolved = DEFAULT_DEMO_CASE;
+      }
+
+      if (fallbackResolved) {
+        setActiveCase({
+          ...DEFAULT_DEMO_CASE,
+          ...fallbackResolved,
+          timeline: fallbackResolved.timeline || DEFAULT_DEMO_CASE.timeline,
+          vitals: fallbackResolved.vitals || DEFAULT_DEMO_CASE.vitals,
+        });
+        setActiveRole('spoke');
+        setActiveView('consult');
+        return true;
+      }
+
+      const explicitError = `Unable to simulate call: ${apiErr.message}`;
+      setUmapError(explicitError);
+      return false;
+    }
   };
 
   // Triggered when Autonomous Voice Agent creates a case
@@ -451,6 +516,42 @@ export function App() {
           </button>
         </div>
       </header>
+
+      {/* Explicit Recoverable Error Banner for uMap case binding */}
+      {umapError && (
+        <div
+          role="alert"
+          style={{
+            backgroundColor: '#450a0a',
+            borderBottom: '1px solid #dc2626',
+            color: '#fecaca',
+            padding: '10px 20px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            fontSize: '13px',
+            fontWeight: 600,
+            zIndex: 150,
+          }}
+        >
+          <span>⚠️ {umapError}</span>
+          <button
+            type="button"
+            onClick={() => setUmapError(null)}
+            style={{
+              background: 'transparent',
+              border: 'none',
+              color: '#fca5a5',
+              cursor: 'pointer',
+              fontWeight: 700,
+              fontSize: '14px',
+              padding: '2px 8px',
+            }}
+          >
+            ✕ Dismiss
+          </button>
+        </div>
+      )}
 
       {/* 2. Active Screen Content */}
       <main

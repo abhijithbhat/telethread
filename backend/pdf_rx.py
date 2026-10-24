@@ -10,18 +10,37 @@ from reportlab.platypus import HRFlowable, Paragraph, SimpleDocTemplate, Spacer,
 
 def format_sms_rx(case_dict: Dict[str, Any], rx_dict: Optional[Dict[str, Any]] = None) -> str:
     """
-    Returns a compact <160-character SMS string (in English + Kannada script)
-    that can be transmitted over 2G SMS when the rural patient is offline.
+    Returns a compact bilingual (English + Kannada script) prescription summary string
+    suitable for transmission over 2G/GPRS SMS networks to rural patients.
+
+    NOTE ON TELECOM ENCODING & SMS SEGMENTATION:
+    Under standard telecommunication protocols (GSM 03.38 / 3GPP 23.038), messages
+    containing non-GSM 7-bit characters (such as Kannada Unicode characters) MUST be
+    encoded using UCS-2 (16-bit). In UCS-2 encoding:
+      - A single standalone SMS is limited to 70 characters.
+      - A concatenated (multi-part) message allows 67 characters per segment.
+    Therefore, although len(candidate) <= 159 in Python counts code points within a
+    single standard 160-char buffer limit, in real cellular network delivery it will
+    typically require 3 concatenated SMS segments (approx. 158 / 67 ≈ 2.35 segments)
+    depending on mobile provider, encoding headers, and SMSC configuration.
     """
     rx = rx_dict or case_dict.get("prescription") or {}
     name = str(case_dict.get("patient_name", "Patient")).split()[0]
     meds = rx.get("medications", []) if isinstance(rx, dict) else []
 
     med_tokens = []
-    for m in meds[:3]:
-        m_name = m.get("name", "").strip()
-        m_dose = m.get("dosage", "").strip()
-        med_tokens.append(f"{m_name} {m_dose}".strip())
+    if isinstance(meds, list):
+        for m in meds[:3]:
+            if isinstance(m, dict):
+                m_name = str(m.get("name") or "").strip()
+                m_dose = str(m.get("dosage") or "").strip()
+            elif isinstance(m, str):
+                m_name = m.strip()
+                m_dose = ""
+            else:
+                continue
+            if m_name or m_dose:
+                med_tokens.append(f"{m_name} {m_dose}".strip())
 
     meds_str = ", ".join(med_tokens) if med_tokens else "Rx as advised"
     follow_up = (
@@ -295,19 +314,31 @@ def generate_prescription_pdf(
         ]
     ]
 
-    if meds:
+    if meds and isinstance(meds, list):
         for idx, m in enumerate(meds, start=1):
+            if isinstance(m, dict):
+                m_name = str(m.get("name") or "")
+                m_dose = str(m.get("dosage") or "")
+                m_freq = str(m.get("frequency") or "")
+                m_dur = str(m.get("duration") or "")
+                m_inst = str(m.get("instructions") or "")
+            elif isinstance(m, str):
+                m_name = m
+                m_dose = m_freq = m_dur = m_inst = ""
+            else:
+                continue
             med_table_data.append(
                 [
                     Paragraph(str(idx), table_cell_style),
-                    Paragraph(f"<b>{m.get('name', '')}</b>", table_cell_style),
-                    Paragraph(str(m.get("dosage", "")), table_cell_style),
-                    Paragraph(str(m.get("frequency", "")), table_cell_style),
-                    Paragraph(str(m.get("duration", "")), table_cell_style),
-                    Paragraph(str(m.get("instructions", "")), table_cell_style),
+                    Paragraph(f"<b>{m_name}</b>", table_cell_style),
+                    Paragraph(m_dose, table_cell_style),
+                    Paragraph(m_freq, table_cell_style),
+                    Paragraph(m_dur, table_cell_style),
+                    Paragraph(m_inst, table_cell_style),
                 ]
             )
-    else:
+
+    if len(med_table_data) == 1:
         med_table_data.append(
             [
                 Paragraph("1", table_cell_style),

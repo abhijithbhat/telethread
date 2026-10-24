@@ -53,7 +53,7 @@ def init_db():
                     },
                     is_red_flag=True,
                     emergency_action="RED FLAG EMERGENCY: Alert Hub immediately, advise 108 / 112 ambulance, and refer to nearest First Referral Unit (FRU).",
-                    specialty="Emergency / General Medicine",
+                    specialty="Cardiology / Emergency",
                     urgency="CRITICAL",
                     current_tier=1,
                     ai_clinical_brief="54M from Sullia PHC with acute chest pain & suspected viper bite, SpO2 89%, BP 185/110. Critical red flag requiring urgent ASV and FRU transfer.",

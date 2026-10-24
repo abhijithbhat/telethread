@@ -335,6 +335,18 @@ def export_fhir_bundle(case_dict: Dict[str, Any]) -> Dict[str, Any]:
 
     for idx, med in enumerate(medications):
         med_id = f"medreq-{case_id}-{idx+1}"
+        if isinstance(med, dict):
+            med_name = str(med.get("name") or "Prescribed Medication")
+            dosage_str = (
+                f"{med.get('dosage', '')} {med.get('frequency', '')} "
+                f"for {med.get('duration', '')}. {med.get('instructions', '')}"
+            ).strip()
+        elif isinstance(med, str):
+            med_name = med
+            dosage_str = "As directed by physician"
+        else:
+            continue
+
         med_entry = {
             "resourceType": "MedicationRequest",
             "id": med_id,
@@ -343,14 +355,11 @@ def export_fhir_bundle(case_dict: Dict[str, Any]) -> Dict[str, Any]:
             "subject": {"reference": f"Patient/{patient_id}"},
             "encounter": {"reference": f"Encounter/{encounter_id}"},
             "medicationCodeableConcept": {
-                "text": med.get("name", "Prescribed Medication"),
+                "text": med_name,
             },
             "dosageInstruction": [
                 {
-                    "text": (
-                        f"{med.get('dosage', '')} {med.get('frequency', '')} "
-                        f"for {med.get('duration', '')}. {med.get('instructions', '')}"
-                    ).strip()
+                    "text": dosage_str or "As directed",
                 }
             ],
         }

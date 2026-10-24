@@ -167,6 +167,8 @@ export const SpokeTriageView: React.FC<SpokeTriageViewProps> = ({
   };
 
   // Clinical client-side evaluation helper for offline resiliency
+  // NOTE: SpO2 critical red-flag threshold is configured at <92% as current application policy,
+  // matching backend evaluate_triage rules. Requires formal clinical review and sign-off before real-world clinical use.
   const checkIsRedFlag = (): boolean => {
     const hasRedFlagSymptom = selectedSymptoms.some((s) =>
       ['chest_pain', 'snakebite_trauma', 'severe_breathlessness', 'altered_sensorium'].includes(s)
@@ -178,7 +180,7 @@ export const SpokeTriageView: React.FC<SpokeTriageViewProps> = ({
 
     return (
       hasRedFlagSymptom ||
-      spo2Num < 90 ||
+      spo2Num < 92 ||
       bpSysNum >= 180 ||
       bpDiaNum >= 110 ||
       hrNum > 120 ||
@@ -287,7 +289,8 @@ export const SpokeTriageView: React.FC<SpokeTriageViewProps> = ({
     }
   };
 
-  const isCurrentSpo2Critical = (parseFloat(spo2) || 98) < 90;
+  // NOTE: SpO2 critical threshold configured at <92% per application policy pending formal clinical review.
+  const isCurrentSpo2Critical = (parseFloat(spo2) || 98) < 92;
   const isCurrentBpCrisis =
     (parseFloat(bpSystolic) || 120) >= 180 || (parseFloat(bpDiastolic) || 80) >= 110;
 
@@ -1036,7 +1039,7 @@ export const SpokeTriageView: React.FC<SpokeTriageViewProps> = ({
                     color: isCurrentSpo2Critical ? '#b91c1c' : '#059669',
                   }}
                 >
-                  {isCurrentSpo2Critical ? 'CRITICAL HYPOXIA (<90%)' : 'Normal (≥95%)'}
+                  {isCurrentSpo2Critical ? 'CRITICAL HYPOXIA (<92%)' : 'Normal (≥95%)'}
                 </span>
               </div>
               <input

@@ -39,6 +39,8 @@ def evaluate_triage(symptoms: List[str], vitals: Dict[str, Any]) -> Dict[str, An
     is_red_flag = False
 
     # Vitals-based red flags
+    # NOTE: SpO2 < 92% is configured as current application policy for red-flag hypoxia,
+    # pending formal clinical review and sign-off before real-world clinical use.
     if spo2 is not None and spo2 < 92:
         is_red_flag = True
     elif bp_systolic is not None and (bp_systolic >= 180 or bp_systolic < 90):
@@ -68,10 +70,31 @@ def evaluate_triage(symptoms: List[str], vitals: Dict[str, Any]) -> Dict[str, An
                     break
 
     if is_red_flag:
+        # Reconcile specialty label with SHARED_CONTRACT.md:
+        # Red-flag cases with cardiac symptoms map to "Cardiology / Emergency".
+        # Non-cardiac emergencies (e.g. snakebite, altered sensorium) retain "Emergency / General Medicine".
+        cardiac_symptoms = {
+            "chest_pain",
+            "chest pain",
+            "angina",
+            "myocardial",
+            "heart_attack",
+            "cardiac",
+        }
+        has_cardiac_symptom = any(cs in symptom_tokens for cs in cardiac_symptoms) or any(
+            any(cs in s for cs in ["chest pain", "chest_pain", "angina", "myocardial"])
+            for s in normalized_symptoms
+        )
+        red_flag_specialty = (
+            "Cardiology / Emergency"
+            if has_cardiac_symptom
+            else "Emergency / General Medicine"
+        )
+
         return {
             "is_red_flag": True,
             "urgency": "CRITICAL",
-            "specialty": "Emergency / General Medicine",
+            "specialty": red_flag_specialty,
             "emergency_action": (
                 "RED FLAG EMERGENCY: Alert Hub immediately, advise 108 / 112 ambulance, "
                 "and refer to nearest First Referral Unit (FRU)."
