@@ -2,6 +2,7 @@
 ### Sub-District 4-Tier Zero-Restart Telemedicine Engine for Low-Connectivity Western Ghats
 
 [![DevHost 2026](https://img.shields.io/badge/Sahyadri_DevHost-2026_Hackathon-blue?style=for-the-badge&logo=codeforces)](https://devhost.sahyadri.edu.in)
+[![Video Demo](https://img.shields.io/badge/Video_Demo-YouTube_Watch-red?style=for-the-badge&logo=youtube)](https://youtu.be/5I1smSKsVMQ)
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-green.svg?style=for-the-badge)](https://opensource.org/licenses/Apache-2.0)
 [![Live Web App](https://img.shields.io/badge/Live_App-telethread--web.onrender.com-0284c7?style=for-the-badge&logo=render)](https://telethread-web.onrender.com)
 [![API Swagger Docs](https://img.shields.io/badge/API_Docs-FastAPI_Swagger-10b981?style=for-the-badge&logo=fastapi)](https://telethread-api.onrender.com/docs)
@@ -11,7 +12,7 @@
 > **Problem Statement 3.2**: Rural Connectivity, Resilient Healthcare Delivery & Sub-District Teleconsultation  
 > **Team AlgoRythms**: Abhijith M Bhat (Lead & WebRTC), Thejas J (Backend & AI), Muhammad Dulqif (UI & Product), Raghavendra (DevOps & Network Benchmarking)  
 > **Institution**: A.J. Institute of Engineering and Technology, Mangaluru  
-> **Live Demo**: [https://telethread-web.onrender.com](https://telethread-web.onrender.com) | **API Docs**: [https://telethread-api.onrender.com/docs](https://telethread-api.onrender.com/docs)  
+> **Video Demo**: [https://youtu.be/5I1smSKsVMQ](https://youtu.be/5I1smSKsVMQ) | **Live Demo**: [https://telethread-web.onrender.com](https://telethread-web.onrender.com) | **API Docs**: [https://telethread-api.onrender.com/docs](https://telethread-api.onrender.com/docs)  
 > **Repository**: [https://github.com/abhijithbhat/telethread](https://github.com/abhijithbhat/telethread)
 
 ---
@@ -197,7 +198,11 @@ npm --prefix frontend test
 
 ---
 
-## 7. Judge Demo Walkthrough (5 Views)
+## 7. Judge Demo Walkthrough & Video Recording
+
+> 📺 **Official 4-Minute Video Demonstration**:  
+> Watch the complete end-to-end clinical workflow and 4-tier adaptive WebRTC demonstration on YouTube:  
+> 👉 **[Watch on YouTube: https://youtu.be/5I1smSKsVMQ](https://youtu.be/5I1smSKsVMQ)**
 
 | Tab | View Name | Key Features to Inspect |
 | :---: | :--- | :--- |
