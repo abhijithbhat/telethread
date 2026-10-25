@@ -9,7 +9,7 @@
 
 > **Sahyadri DevHost 2026 / Synergia 26 Hackathon**  
 > **Problem Statement 3.2**: Rural Connectivity, Resilient Healthcare Delivery & Sub-District Teleconsultation  
-> **Team**: Abhijith M Bhat (Lead & WebRTC), Thejas J (Backend & AI), Muhammad Dulqif (UI & Product), Raghavendra (DevOps & Network Benchmarking)  
+> **Team AlgoRythms**: Abhijith M Bhat (Lead & WebRTC), Thejas J (Backend & AI), Muhammad Dulqif (UI & Product), Raghavendra (DevOps & Network Benchmarking)  
 > **Institution**: A.J. Institute of Engineering and Technology, Mangaluru  
 > **Live Demo**: [https://telethread-web.onrender.com](https://telethread-web.onrender.com) | **API Docs**: [https://telethread-api.onrender.com/docs](https://telethread-api.onrender.com/docs)  
 > **Repository**: [https://github.com/abhijithbhat/telethread](https://github.com/abhijithbhat/telethread)
@@ -259,7 +259,7 @@ docker compose up --build
 
 ## 10. Team & Acknowledgements
 
-Built with ❤️ by **Team TeleThread** at **A.J. Institute of Engineering and Technology, Mangaluru** for **Sahyadri DevHost 2026 / Synergia 26**.
+Built with ❤️ by **Team AlgoRythms** at **A.J. Institute of Engineering and Technology, Mangaluru** for **Sahyadri DevHost 2026 / Synergia 26**.
 
 * **Abhijith M Bhat** — Lead Architecture, Adaptive WebRTC State Machine, Hysteresis Logic
 * **Thejas J** — Backend APIs, Signalling Server, Sarvam/Gemini Integrations & Regression Testing
